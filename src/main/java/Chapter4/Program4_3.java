@@ -39,7 +39,7 @@ public class Program4_3 extends JFrame implements GLEventListener {
   private Matrix3D pMat;
 
   public Program4_3() {
-    setTitle("Chapter4 - program1");
+    setTitle("Chapter4 - program3-multiple shapes");
     setSize(600, 600);
     myCanvas = new GLCanvas();
     myCanvas.addGLEventListener(this);

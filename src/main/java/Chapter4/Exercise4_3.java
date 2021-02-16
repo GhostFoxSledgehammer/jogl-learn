@@ -42,7 +42,7 @@ public class Exercise4_3 extends JFrame implements GLEventListener {
   private Matrix3D pMat;
 
   public Exercise4_3() {
-    setTitle("Chapter4 - program1");
+    setTitle("Chapter4 - exercise1");
     setSize(600, 600);
     myCanvas = new GLCanvas();
     myCanvas.addGLEventListener(this);

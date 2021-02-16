@@ -39,7 +39,7 @@ public class Program4_2 extends JFrame implements GLEventListener {
   private Matrix3D pMat;
 
   public Program4_2() {
-    setTitle("Chapter4 - program1");
+    setTitle("Chapter4 - program2 -Instanced");
     setSize(600, 600);
     myCanvas = new GLCanvas();
     myCanvas.addGLEventListener(this);
@@ -115,7 +115,7 @@ public class Program4_2 extends JFrame implements GLEventListener {
 // adjust OpenGL settings and draw model
       gl.glEnable(GL_DEPTH_TEST);
       gl.glDepthFunc(GL_LEQUAL);
-      gl.glDrawArraysInstanced(GL_TRIANGLES, 0, 36, 100000);
+      gl.glDrawArraysInstanced(GL_TRIANGLES, 0, 36, 500000);
     }
 
   private void setupVertices() {

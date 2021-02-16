@@ -41,7 +41,7 @@ public class Exercise4_2 extends JFrame implements GLEventListener {
   double theta =1,phi;
 
   public Exercise4_2() {
-    setTitle("Chapter4 - program1");
+    setTitle("Chapter4 - exercise1");
     setSize(600, 600);
     myCanvas = new GLCanvas();
     myCanvas.addGLEventListener(this);
