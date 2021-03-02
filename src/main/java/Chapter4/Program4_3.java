@@ -18,9 +18,8 @@ import com.jogamp.opengl.GLContext;
 import static graphicslib3D.GLSLUtils.checkOpenGLError;
 import static graphicslib3D.GLSLUtils.printProgramLog;
 import static graphicslib3D.GLSLUtils.printShaderLog;
-import java.io.InputStream;
-import java.util.Scanner;
-import java.util.Vector;
+import static utils.Math3Dutils.perspective;
+import static utils.joglutils.readShaderSource;
 
 /**
  *
@@ -220,50 +219,5 @@ public class Program4_3 extends JFrame implements GLEventListener {
     gl.glDeleteShader(vShader);
     gl.glDeleteShader(fShader);
     return vfprogram;
-  }
-
-  private String[] readShaderSource(String filename) {
-
-    Vector<String> lines = new Vector<String>();
-    Scanner sc;
-    sc = new Scanner(getFileFromResourceAsStream(filename));
-    while (sc.hasNext()) {
-      lines.addElement(sc.nextLine());
-    }
-    String[] program = new String[lines.size()];
-    for (int i = 0; i < lines.size(); i++) {
-      program[i] = (String) lines.elementAt(i) + "\n";
-    }
-    return program;
-  }
-
-  private InputStream getFileFromResourceAsStream(String fileName) {
-
-    // The class loader that loaded the class
-    ClassLoader classLoader = getClass().getClassLoader();
-    InputStream inputStream = classLoader.getResourceAsStream(fileName);
-
-    // the stream holding the file content
-    if (inputStream == null) {
-      return null;
-    } else {
-      return inputStream;
-    }
-
-  }
-
-  private Matrix3D perspective(float fovy, float aspect, float n, float f) {
-    float q = 1.0f / ((float) Math.tan(Math.toRadians(0.5f * fovy)));
-    float A = q / aspect;
-    float B = (n + f) / (n - f);
-    float C = (2.0f * n * f) / (n - f);
-    Matrix3D r = new Matrix3D();
-    r.setElementAt(0, 0, A);
-    r.setElementAt(1, 1, q);
-    r.setElementAt(2, 2, B);
-    r.setElementAt(3, 2, -1.0f);
-    r.setElementAt(2, 3, C);
-    r.setElementAt(3, 3, 0.0f);
-    return r;
   }
 }

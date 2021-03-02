@@ -18,6 +18,7 @@ import java.nio.FloatBuffer;
 import java.util.Scanner;
 import java.util.Vector;
 import javax.swing.JFrame;
+import static utils.joglutils.readShaderSource;
 
 /**
  *
@@ -32,7 +33,7 @@ public class Exercise3_1 extends JFrame implements GLEventListener {
   private float inc = 0.05f;
 
   public Exercise3_1() {
-    setTitle("Chapter2 - exercise1");
+    setTitle("Chapter3 - exercise1");
     setSize(600, 400);
     setLocation(200, 200);
     myCanvas = new GLCanvas();
@@ -90,36 +91,6 @@ public class Exercise3_1 extends JFrame implements GLEventListener {
     gl.glDeleteShader(vShader);
     gl.glDeleteShader(fShader);
     return vfprogram;
-  }
-
-  private String[] readShaderSource(String filename) {
-
-    Vector<String> lines = new Vector<String>();
-    Scanner sc;
-    sc = new Scanner(getFileFromResourceAsStream(filename));
-    while (sc.hasNext()) {
-      lines.addElement(sc.nextLine());
-    }
-    String[] program = new String[lines.size()];
-    for (int i = 0; i < lines.size(); i++) {
-      program[i] = (String) lines.elementAt(i) + "\n";
-    }
-    return program;
-  }
-
-  private InputStream getFileFromResourceAsStream(String fileName) {
-
-    // The class loader that loaded the class
-    ClassLoader classLoader = getClass().getClassLoader();
-    InputStream inputStream = classLoader.getResourceAsStream(fileName);
-
-    // the stream holding the file content
-    if (inputStream == null) {
-      return null;
-    } else {
-      return inputStream;
-    }
-
   }
 
   public static void main(String[] args) {
