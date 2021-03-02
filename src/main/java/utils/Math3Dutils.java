@@ -12,7 +12,6 @@ import graphicslib3D.Vector3D;
  * @author kshan
  */
 public class Math3Dutils {
-  
 
   public static Matrix3D perspective(float fovy, float aspect, float n, float f) {
     float q = 1.0f / ((float) Math.tan(Math.toRadians(0.5f * fovy)));
@@ -38,8 +37,6 @@ public class Math3Dutils {
     return r;
   }
 
-  
-
   public static Matrix3D lookAt(Point3D eye, Point3D target, Vector3D y) {
     Vector3D eyeV = new Vector3D(eye);
     Vector3D targetV = new Vector3D(target);
@@ -64,5 +61,21 @@ public class Math3Dutils {
     look.setElementAt(2, 3, (fwd.mult(-1)).dot(eyeV.mult(-1)));
     look.setElementAt(3, 3, 1.08);
     return look;
+  }
+
+  // utility function for rotating a vector around the Y axis
+  public static Vector3D tRotateY(Vector3D inVec, float amount) {
+    Matrix3D yMat = new Matrix3D();
+    yMat.rotateY((double) amount);
+    Vector3D result = inVec.mult(yMat);
+    return result;
+  }
+
+// utility function for rotating a point around the Z axis
+  public static Point3D tRotateZ(Point3D inPt, float amount) {
+    Matrix3D zMat = new Matrix3D();
+    zMat.rotateZ((double) amount);
+    Point3D result = inPt.mult(zMat);
+    return result;
   }
 }
