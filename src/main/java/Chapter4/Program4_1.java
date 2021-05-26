@@ -54,7 +54,7 @@ public class Program4_1 extends JFrame implements GLEventListener {
     cameraY = 0.0f;
     cameraZ = 8.0f;
     cubeLocX = 0.0f;
-    cubeLocY = -1.0f;
+    cubeLocY = -2.0f;
     cubeLocZ = 0.0f; // shifted down along    the Y    -axis to reveal perspective
     // Create a perspective matrix, this one has fovy=60, aspect ratio    matches screen window.
     // Values for near and far clipping planes can vary as discussed in Section 4.9.

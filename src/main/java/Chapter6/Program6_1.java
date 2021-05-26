@@ -57,7 +57,6 @@ public class Program6_1 extends JFrame implements GLEventListener {
   }
 
   public void init(GLAutoDrawable drawable) {
-    GL4 gl = (GL4) GLContext.getCurrentGL();
     rendering_program = createShaderProgram();
     mySphere = new Sphere(128);
     setupVertices();
@@ -101,7 +100,7 @@ public class Program6_1 extends JFrame implements GLEventListener {
     Matrix3D mMat = new Matrix3D();
     double x = (double) (System.currentTimeMillis()) / 10000.0;
     mMat.translate(cubeLocX, cubeLocY, cubeLocZ);
-    mMat.rotate(500*x, 1000 * x, 0);
+//    mMat.rotate(500*x, 1000 * x, 0);
 // concatenate model and view matrix to create MV matrix
     Matrix3D mvMat = new Matrix3D();
     mvMat.concatenate(vMat);

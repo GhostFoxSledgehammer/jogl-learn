@@ -37,7 +37,7 @@ public class Sphere {
         float y = (float) cos(toRadians(180 - i * 180 / prec));
         float x = -(float) cos(toRadians(j * 360 / prec)) * (float) abs(cos(asin(y)));
         float z = (float) sin(toRadians(j * 360 / prec)) * (float) abs(cos(asin(y)));
-        vertices[i * (prec + 1) + j].setLocation(new Point3D(x, y, z));
+        vertices[i * (prec + 1) + j].setLocation(x, y, z);
         vertices[i * (prec + 1) + j].setS((float) j / prec); // texture coordinates (s,t)
         vertices[i * (prec + 1) + j].setT((float) i / prec);
         vertices[i * (prec + 1) + j].setNormal(new Vector3D(vertices[i * (prec + 1) + j].getLocation()));

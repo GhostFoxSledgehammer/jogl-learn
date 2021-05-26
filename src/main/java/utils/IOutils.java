@@ -62,7 +62,7 @@ public class IOutils {
     try {
       file = new File(resource.toURI());
     } catch (URISyntaxException ex) {
-      Logger.getLogger(Program5_1.class.getName()).log(Level.SEVERE, null, ex);
+      Logger.getLogger(currentClass.getName()).log(Level.SEVERE, null, ex);
     }
     return file;
   }

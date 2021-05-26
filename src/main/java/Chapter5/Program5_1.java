@@ -7,7 +7,6 @@ import java.nio.*;
 import graphicslib3D.*;
 import java.io.InputStream;
 import java.util.Scanner;
-import java.util.Vector;
 import javax.swing.*;
 
 import static com.jogamp.opengl.GL4.*;
@@ -15,9 +14,6 @@ import static com.jogamp.opengl.GL2ES2.GL_COMPILE_STATUS;
 import static com.jogamp.opengl.GL2ES2.GL_FRAGMENT_SHADER;
 import static com.jogamp.opengl.GL2ES2.GL_LINK_STATUS;
 import static com.jogamp.opengl.GL2ES2.GL_VERTEX_SHADER;
-import static graphicslib3D.GLSLUtils.checkOpenGLError;
-import static graphicslib3D.GLSLUtils.printProgramLog;
-import static graphicslib3D.GLSLUtils.printShaderLog;
 
 import com.jogamp.opengl.*;
 import com.jogamp.opengl.awt.GLCanvas;
@@ -30,6 +26,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import static utils.joglutils.readShaderSource;
 
 /**
  *
@@ -172,25 +169,21 @@ public class Program5_1 extends JFrame implements GLEventListener {
     int vShader = gl.glCreateShader(GL_VERTEX_SHADER);
     gl.glShaderSource(vShader, vshaderSource.length, vshaderSource, null, 0);
     gl.glCompileShader(vShader);
-    checkOpenGLError(); // can use returned boolean
     gl.glGetShaderiv(vShader, GL_COMPILE_STATUS, vertCompiled, 0);
     if (vertCompiled[0] == 1) {
       System.out.println("vShader vertex compilation success.");
     } else {
       System.out.println("vShader vertex compilation failed.");
-      printShaderLog(vShader);
     }
 
     int fShader = gl.glCreateShader(GL_FRAGMENT_SHADER);
     gl.glShaderSource(fShader, fshaderSource.length, fshaderSource, null, 0);
     gl.glCompileShader(fShader);
-    checkOpenGLError(); // can use returned boolean
     gl.glGetShaderiv(fShader, GL_COMPILE_STATUS, fragCompiled, 0);
     if (fragCompiled[0] == 1) {
       System.out.println("fShader fragment compilation success.");
     } else {
       System.out.println("fShader fragment compilation failed.");
-      printShaderLog(fShader);
     }
 
     if ((vertCompiled[0] != 1) || (fragCompiled[0] != 1)) {
@@ -207,33 +200,16 @@ public class Program5_1 extends JFrame implements GLEventListener {
     gl.glLinkProgram(vfprogram);
     gl.glLinkProgram(vfprogram);
 
-    checkOpenGLError();
     gl.glGetProgramiv(vfprogram, GL_LINK_STATUS, linked, 0);
     if (linked[0] == 1) {
       System.out.println("vfprogram linking succeeded.");
     } else {
       System.out.println("vfprogram linking failed.");
-      printProgramLog(vfprogram);
     }
 
     gl.glDeleteShader(vShader);
     gl.glDeleteShader(fShader);
     return vfprogram;
-  }
-
-  private String[] readShaderSource(String filename) {
-
-    Vector<String> lines = new Vector<String>();
-    Scanner sc;
-    sc = new Scanner(getFileFromResourceAsStream(filename));
-    while (sc.hasNext()) {
-      lines.addElement(sc.nextLine());
-    }
-    String[] program = new String[lines.size()];
-    for (int i = 0; i < lines.size(); i++) {
-      program[i] = (String) lines.elementAt(i) + "\n";
-    }
-    return program;
   }
 
   public Texture loadTexture(String textureFileName) {
@@ -246,21 +222,6 @@ public class Program5_1 extends JFrame implements GLEventListener {
     return tex;
   }
 
-  private InputStream getFileFromResourceAsStream(String fileName) {
-
-    // The class loader that loaded the class
-    ClassLoader classLoader = getClass().getClassLoader();
-    InputStream inputStream = classLoader.getResourceAsStream(fileName);
-
-    // the stream holding the file content
-    if (inputStream == null) {
-      return null;
-    } else {
-      return inputStream;
-    }
-
-  }
-
   private File getFileFromResource(String fileName) {
     File file = null;
     // The class loader that loaded the class
@@ -269,7 +230,7 @@ public class Program5_1 extends JFrame implements GLEventListener {
     try {
       file = new File(resource.toURI());
     } catch (URISyntaxException ex) {
-      Logger.getLogger(Program5_1.class.getName()).log(Level.SEVERE, null, ex);
+      Logger.getLogger(getClass().getName()).log(Level.SEVERE, null, ex);
     }
     return file;
   }

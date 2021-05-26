@@ -13,10 +13,7 @@ import com.jogamp.opengl.GLContext;
 import com.jogamp.opengl.GLEventListener;
 import com.jogamp.opengl.awt.GLCanvas;
 import com.jogamp.opengl.util.FPSAnimator;
-import java.io.InputStream;
 import java.nio.FloatBuffer;
-import java.util.Scanner;
-import java.util.Vector;
 import javax.swing.JFrame;
 import static utils.joglutils.readShaderSource;
 
