@@ -11,7 +11,7 @@ import com.jogamp.opengl.GL4;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GLContext;
 import com.jogamp.opengl.GLEventListener;
-import com.jogamp.opengl.awt.GLCanvas;
+import com.jogamp.opengl.awt.GLJPanel;
 import com.jogamp.opengl.util.FPSAnimator;
 import java.nio.FloatBuffer;
 import javax.swing.JFrame;
@@ -24,7 +24,7 @@ public class Exercise2_1 extends JFrame implements GLEventListener {
 
   private int rendering_program;
   private int vao[] = new int[1];
-  private final GLCanvas myCanvas;
+  private final GLJPanel myCanvas;
   private int sizeinc = 5;
   private int pointsize = 1;
 
@@ -32,7 +32,7 @@ public class Exercise2_1 extends JFrame implements GLEventListener {
     setTitle("Chapter2 - exercise1");
     setSize(600, 400);
     setLocation(200, 200);
-    myCanvas = new GLCanvas();
+    myCanvas = new GLJPanel();
     myCanvas.addGLEventListener(this);
     this.add(myCanvas);
     setVisible(true);

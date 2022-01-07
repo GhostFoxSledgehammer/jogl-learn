@@ -4,7 +4,7 @@
 package Chapter5;
 
 import java.nio.*;
-import graphicslib3D.*;
+import .*;
 import java.io.InputStream;
 import java.util.Scanner;
 import javax.swing.*;
@@ -16,7 +16,7 @@ import static com.jogamp.opengl.GL2ES2.GL_LINK_STATUS;
 import static com.jogamp.opengl.GL2ES2.GL_VERTEX_SHADER;
 
 import com.jogamp.opengl.*;
-import com.jogamp.opengl.awt.GLCanvas;
+import com.jogamp.opengl.awt.GLJPanel;
 import com.jogamp.common.nio.Buffers;
 import com.jogamp.opengl.GLContext;
 import com.jogamp.opengl.util.FPSAnimator;
@@ -34,21 +34,21 @@ import static utils.joglutils.readShaderSource;
  */
 public class Program5_1 extends JFrame implements GLEventListener {
 
-  private GLCanvas myCanvas;
+  private GLJPanel myCanvas;
   private int rendering_program;
   private int vao[] = new int[1];
   private int vbo[] = new int[2];
   private float cameraX, cameraY, cameraZ;
   private float cubeLocX, cubeLocY, cubeLocZ;
   private float pyrLocX, pyrLocY, pyrLocZ;
-  private GLSLUtils util = new GLSLUtils();
-  private Matrix3D pMat;
+  private  util = new ();
+  private Matrix4f pMat;
   private int brickTexture;
 
   public Program5_1() {
     setTitle("Chapter5 - program1");
     setSize(600, 600);
-    myCanvas = new GLCanvas();
+    myCanvas = new GLJPanel();
     myCanvas.addGLEventListener(this);
     this.add(myCanvas);
     setVisible(true);
@@ -96,15 +96,15 @@ public class Program5_1 extends JFrame implements GLEventListener {
     gl.glUseProgram(rendering_program);
     //gl.glEnable(GL_CULL_FACE);
 // build view matrix
-    Matrix3D vMat = new Matrix3D();
+    Matrix4f vMat = new Matrix4f();
     vMat.translate(-cameraX, -cameraY, -cameraZ);
 // build model matrix
-    Matrix3D mMat = new Matrix3D();
+    Matrix4f mMat = new Matrix4f();
     double x = (double) (System.currentTimeMillis()) / 10000.0;
     mMat.translate(cubeLocX, cubeLocY, cubeLocZ);
     mMat.rotate(2000 * x,0,0);
 // concatenate model and view matrix to create MV matrix
-    Matrix3D mvMat = new Matrix3D();
+    Matrix4f mvMat = new Matrix4f();
     mvMat.concatenate(vMat);
     mvMat.concatenate(mMat);
 // copy perspective and MV matrices to corresponding uniform variables
@@ -235,12 +235,12 @@ public class Program5_1 extends JFrame implements GLEventListener {
     return file;
   }
 
-  private Matrix3D perspective(float fovy, float aspect, float n, float f) {
+  private Matrix4f perspective(float fovy, float aspect, float n, float f) {
     float q = 1.0f / ((float) Math.tan(Math.toRadians(0.5f * fovy)));
     float A = q / aspect;
     float B = (n + f) / (n - f);
     float C = (2.0f * n * f) / (n - f);
-    Matrix3D r = new Matrix3D();
+    Matrix4f r = new Matrix4f();
     r.setElementAt(0, 0, A);
     r.setElementAt(1, 1, q);
     r.setElementAt(2, 2, B);

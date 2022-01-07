@@ -13,7 +13,7 @@ import com.jogamp.opengl.GL4;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GLContext;
 import com.jogamp.opengl.GLEventListener;
-import com.jogamp.opengl.awt.GLCanvas;
+import com.jogamp.opengl.awt.GLJPanel;
 import com.jogamp.opengl.glu.GLU;
 import javax.swing.JFrame;
 
@@ -25,13 +25,13 @@ public class Program2_3 extends JFrame implements GLEventListener {
 
   private int rendering_program;
   private int vao[] = new int[1];
-  private final GLCanvas myCanvas;
+  private final GLJPanel myCanvas;
 
   public Program2_3() {
     setTitle("Chapter2 - program3");
     setSize(600, 400);
     setLocation(200, 200);
-    myCanvas = new GLCanvas();
+    myCanvas = new GLJPanel();
     myCanvas.addGLEventListener(this);
     this.add(myCanvas);
     setVisible(true);

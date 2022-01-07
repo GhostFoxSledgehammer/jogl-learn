@@ -3,9 +3,9 @@
  */
 package Math;
 
-import graphicslib3D.Point3D;
-import graphicslib3D.Vector3D;
-import graphicslib3D.Vertex3D;
+import .Point3D;
+import .Vector3f;
+import .Vertex3D;
 import static java.lang.Math.*;
 
 /**
@@ -40,7 +40,7 @@ public class Sphere {
         vertices[i * (prec + 1) + j].setLocation(x, y, z);
         vertices[i * (prec + 1) + j].setS((float) j / prec); // texture coordinates (s,t)
         vertices[i * (prec + 1) + j].setT((float) i / prec);
-        vertices[i * (prec + 1) + j].setNormal(new Vector3D(vertices[i * (prec + 1) + j].getLocation()));
+        vertices[i * (prec + 1) + j].setNormal(new Vector3f(vertices[i * (prec + 1) + j].getLocation()));
       }
     }
 // calculate triangle indices

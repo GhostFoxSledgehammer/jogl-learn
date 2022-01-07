@@ -6,18 +6,18 @@ import javax.swing.*;
 import static com.jogamp.opengl.GL4.*;
 
 import com.jogamp.opengl.*;
-import com.jogamp.opengl.awt.GLCanvas;
+import com.jogamp.opengl.awt.GLJPanel;
 import com.jogamp.common.nio.Buffers;
 
 public class Program2_1 extends JFrame implements GLEventListener {
 
-  private final GLCanvas myCanvas;
+  private final GLJPanel myCanvas;
 
   public Program2_1() {
     setTitle("Chapter2 - program1");
     setSize(600, 400);
     setLocation(200, 200);
-    myCanvas = new GLCanvas();
+    myCanvas = new GLJPanel();
     myCanvas.addGLEventListener(this);
     this.add(myCanvas);
     setVisible(true);

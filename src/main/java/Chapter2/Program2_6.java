@@ -11,7 +11,7 @@ import com.jogamp.opengl.GL4;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GLContext;
 import com.jogamp.opengl.GLEventListener;
-import com.jogamp.opengl.awt.GLCanvas;
+import com.jogamp.opengl.awt.GLJPanel;
 import com.jogamp.opengl.util.FPSAnimator;
 import java.io.InputStream;
 import java.nio.FloatBuffer;
@@ -27,7 +27,7 @@ public class Program2_6 extends JFrame implements GLEventListener {
 
   private int rendering_program;
   private int vao[] = new int[1];
-  private GLCanvas myCanvas;
+  private GLJPanel myCanvas;
   private float x = 0.0f;
   private float inc = 0.01f;
 
@@ -35,7 +35,7 @@ public class Program2_6 extends JFrame implements GLEventListener {
     setTitle("Chapter2 - program6");
     setSize(600, 400);
     setLocation(200, 200);
-    myCanvas = new GLCanvas();
+    myCanvas = new GLJPanel();
     myCanvas.addGLEventListener(this);
     this.add(myCanvas);
     setVisible(true);

@@ -3,12 +3,11 @@
  */
 package Chapter4;
 
-import graphicslib3D.*;
 import java.nio.*;
 import javax.swing.*;
 import static com.jogamp.opengl.GL4.*;
 import com.jogamp.opengl.*;
-import com.jogamp.opengl.awt.GLCanvas;
+import com.jogamp.opengl.awt.GLJPanel;
 import com.jogamp.common.nio.Buffers;
 import static com.jogamp.opengl.GL2ES2.GL_COMPILE_STATUS;
 import static com.jogamp.opengl.GL2ES2.GL_FRAGMENT_SHADER;
@@ -16,10 +15,10 @@ import static com.jogamp.opengl.GL2ES2.GL_LINK_STATUS;
 import static com.jogamp.opengl.GL2ES2.GL_VERTEX_SHADER;
 import com.jogamp.opengl.GLContext;
 import com.jogamp.opengl.util.FPSAnimator;
-import static graphicslib3D.GLSLUtils.checkOpenGLError;
-import static graphicslib3D.GLSLUtils.printProgramLog;
-import static graphicslib3D.GLSLUtils.printShaderLog;
-import static utils.Math3Dutils.perspective;
+import org.joml.Matrix4f;
+import static utils.joglutils.checkOpenGLError;
+import static utils.joglutils.printProgramLog;
+import static utils.joglutils.printShaderLog;
 import static utils.joglutils.readShaderSource;
 
 /**
@@ -28,27 +27,33 @@ import static utils.joglutils.readShaderSource;
  */
 public class Program4_1_2 extends JFrame implements GLEventListener {
 
-  private GLCanvas myCanvas;
+  private GLJPanel myCanvas;
   private int rendering_program;
   private int vao[] = new int[1];
   private int vbo[] = new int[2];
+  private final FloatBuffer vals = Buffers.newDirectFloatBuffer(16);
   private float cameraX, cameraY, cameraZ;
   private float cubeLocX, cubeLocY, cubeLocZ;
-  private GLSLUtils util = new GLSLUtils();
-  private Matrix3D pMat;
+  private final Matrix4f pMat = new Matrix4f(); // perspective matrix
+  private final Matrix4f vMat = new Matrix4f(); // view matrix
+  private final Matrix4f mMat = new Matrix4f(); // model matrix
+  private Matrix4f mvMat = new Matrix4f(); // model-view matrix
+  private int mvLoc, pLoc;
+  private long startTime;
 
   public Program4_1_2() {
     setTitle("Chapter4 - program1.2");
     setSize(600, 600);
-    myCanvas = new GLCanvas();
+    myCanvas = new GLJPanel();
     myCanvas.addGLEventListener(this);
-    this.add(myCanvas);
+    add(myCanvas);
     setVisible(true);
     FPSAnimator animtr = new FPSAnimator(myCanvas, 50);
     animtr.start();
-    this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+    setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
   }
 
+  @Override
   public void init(GLAutoDrawable drawable) {
     GL4 gl = (GL4) GLContext.getCurrentGL();
     rendering_program = createShaderProgram();
@@ -62,7 +67,8 @@ public class Program4_1_2 extends JFrame implements GLEventListener {
     // Create a perspective matrix, this one has fovy=60, aspect ratio    matches screen window.
     // Values for near and far clipping planes can vary as discussed in Section 4.9.
     float aspect = (float) myCanvas.getWidth() / (float) myCanvas.getHeight();
-    pMat = perspective(70.0f, aspect, 0.1f, 1000.0f);
+    pMat.setPerspective((float) Math.toRadians(70), aspect, 0.1f, 1000.0f);
+    startTime = System.currentTimeMillis();
   }
 // main(), reshape(), and dispose() are are unchanged
 
@@ -70,36 +76,38 @@ public class Program4_1_2 extends JFrame implements GLEventListener {
     new Program4_1_2();
   }
 
+  @Override
   public void reshape(GLAutoDrawable drawable, int x, int y, int width, int height) {
+    float aspect = (float) width / (float) height;
+    pMat.setPerspective((float) Math.toRadians(70), aspect, 0.1f, 1000.0f);
   }
 
+  @Override
   public void dispose(GLAutoDrawable drawable) {
   }
 
+  @Override
   public void display(GLAutoDrawable drawable) {
     GL4 gl = (GL4) GLContext.getCurrentGL();
     gl.glClear(GL_DEPTH_BUFFER_BIT);
-    float bkg[] = {0.0f, 0.0f, 0.0f, 1.0f};
-    FloatBuffer bkgBuffer = Buffers.newDirectFloatBuffer(bkg);
-    gl.glClearBufferfv(GL_COLOR, 0, bkgBuffer);
+    gl.glClear(GL_COLOR_BUFFER_BIT);
     gl.glUseProgram(rendering_program);
 // build view matrix
-    Matrix3D vMat = new Matrix3D();
-    vMat.translate(-cameraX,-cameraY,-cameraZ);
-// build model matrix
-Matrix3D mMat = new Matrix3D();
-    double t = (double) (System.currentTimeMillis()) / 10000.0;
-    mMat.translate(Math.sin(2 * t) * 2.0, Math.sin(3 * t) * 2.0, Math.sin(4 * t) * 2.0);
-    mMat.rotate(1000 * t, 1000 * t, 1000 * t);
+    vMat.translation(-cameraX, -cameraY, -cameraZ);
+    long elapsedTime = System.currentTimeMillis() - startTime;
+    double tf = elapsedTime / 1000.0;
+    mMat.identity();
+    mMat.translate((float) Math.sin(.35f * tf) * 2.0f, (float) Math.sin(.52f * tf) * 2.0f, (float) Math.sin(.7f * tf) * 2.0f);
+    mMat.rotateXYZ(1.75f * (float) tf, 1.75f * (float) tf, 1.75f * (float) tf); //
 // concatenate model and view matrix to create MV matrix
-    Matrix3D mvMat = new Matrix3D();
-    mvMat.concatenate(vMat);
-    mvMat.concatenate(mMat);
+    mvMat.identity();
+    mvMat.mul(vMat);
+    mvMat.mul(mMat);
 // copy perspective and MV matrices to corresponding uniform variables
     int mv_loc = gl.glGetUniformLocation(rendering_program, "mv_matrix");
     int proj_loc = gl.glGetUniformLocation(rendering_program, "proj_matrix");
-    gl.glUniformMatrix4fv(proj_loc, 1, false, pMat.getFloatValues(), 0);
-    gl.glUniformMatrix4fv(mv_loc, 1, false, mvMat.getFloatValues(), 0);
+    gl.glUniformMatrix4fv(proj_loc, 1, false, pMat.get(vals));
+    gl.glUniformMatrix4fv(mv_loc, 1, false, mvMat.get(vals));
 // associate VBO with the corresponding vertex attribute in the vertexshader 
     gl.glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
     gl.glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, 0);
@@ -114,26 +122,26 @@ Matrix3D mMat = new Matrix3D();
     GL4 gl = (GL4) GLContext.getCurrentGL();
 // 36 vertices of the 12 triangles making up a 2 x 2 x 2 cube centered    at the origin
     float[] vertex_positions
-            = {-1.0f, 1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f,
-              -1.0f, -1.0f, 1.0f, 1.0f, -1.0f, -1.0f, 1.0f, -1.0f,
-              1.0f, -1.0f, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 1.0f, -1.0f, 1.0f,
-              -1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, -1.0f,
-              1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 1.0f, -1.0f,
-              -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-              -1.0f, -1.0f, 1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f, 1.0f, -1.0f,
-              -1.0f, -1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f, 1.0f,
-              -1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f, 1.0f, -1.0f, -1.0f, 1.0f,
-              -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,
-              -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-              1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f, -1.0f
-            };
+    = {-1.0f, 1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f,
+      -1.0f, -1.0f, 1.0f, 1.0f, -1.0f, -1.0f, 1.0f, -1.0f,
+      1.0f, -1.0f, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 1.0f, -1.0f, 1.0f,
+      -1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, -1.0f,
+      1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 1.0f, -1.0f,
+      -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+      -1.0f, -1.0f, 1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f, 1.0f, -1.0f,
+      -1.0f, -1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f, 1.0f,
+      -1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f, 1.0f, -1.0f, -1.0f, 1.0f,
+      -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,
+      -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+      1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f, -1.0f
+    };
     gl.glGenVertexArrays(vao.length, vao, 0);
     gl.glBindVertexArray(vao[0]);
     gl.glGenBuffers(vbo.length, vbo, 0);
     gl.glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
     FloatBuffer vertBuf = Buffers.newDirectFloatBuffer(vertex_positions);
     gl.glBufferData(GL_ARRAY_BUFFER, vertBuf.limit() * 4, vertBuf,
-            GL_STATIC_DRAW);
+    GL_STATIC_DRAW);
   }
 
   private int createShaderProgram() {
@@ -171,7 +179,7 @@ Matrix3D mMat = new Matrix3D();
     if ((vertCompiled[0] != 1) || (fragCompiled[0] != 1)) {
       System.out.println("\nCompilation error; return-flags:");
       System.out.println(" vertCompiled = " + vertCompiled[0]
-              + "fragCompiled =  " + fragCompiled[0]);
+      + "fragCompiled =  " + fragCompiled[0]);
     } else {
       System.out.println("Successful compilation");
     }

@@ -4,10 +4,10 @@
 package Math;
 
 import static com.jogamp.nativewindow.util.PixelFormat.CType.Y;
-import graphicslib3D.Matrix3D;
-import graphicslib3D.Point3D;
-import graphicslib3D.Vector3D;
-import graphicslib3D.Vertex3D;
+import .Matrix4f;
+import .Point3D;
+import .Vector3f;
+import .Vertex3D;
 
 /**
  *
@@ -19,7 +19,7 @@ public class Torus {
   private int[] indices;
   private Vertex3D[] vertices;
   private float inner, outer;
-  private Vector3D[] tTangent, bTangent;
+  private Vector3f[] tTangent, bTangent;
 
   public Torus(float innerRadius, float outerRadius, int p) {
     inner = innerRadius;
@@ -33,8 +33,8 @@ public class Torus {
     numIndices = prec * prec * 6;
     vertices = new Vertex3D[numVertices];
     indices = new int[numIndices];
-    tTangent = new Vector3D[numVertices];
-    bTangent = new Vector3D[numVertices];
+    tTangent = new Vector3f[numVertices];
+    bTangent = new Vector3f[numVertices];
     for (int i = 0; i < numVertices; i++) {
       vertices[i] = new Vertex3D();
     }
@@ -49,19 +49,19 @@ public class Torus {
       vertices[i].setS(0.0f);
       vertices[i].setT(((float) i) / ((float) prec));
 // compute normal vectors for each vertex in the ring
-      Vector3D negZ = new Vector3D(0.0f, 0.0f, -1.0f); // tangent vector of irst outer ring = -Z axis 
-      Vector3D negY = new Vector3D(0.0f, -1.0f, 0.0f); // initial bitangent vector = -Y axis 
+      Vector3f negZ = new Vector3f(0.0f, 0.0f, -1.0f); // tangent vector of irst outer ring = -Z axis 
+      Vector3f negY = new Vector3f(0.0f, -1.0f, 0.0f); // initial bitangent vector = -Y axis 
       tTangent[i] = negZ; // the tangent vector is saved (and thus available to the application)
 // the bitangent is then rotated around the Z axis, and also saved
-      bTangent[i] = new Vector3D(tRotateZ(new Point3D(negY), (i * 360.0f / (prec))));
+      bTangent[i] = new Vector3f(tRotateZ(new Point3D(negY), (i * 360.0f / (prec))));
       vertices[i].setNormal(tTangent[i].cross(bTangent[i])); // cross product produces the normal
     }
 // rotate the first ring about the Y axis to generate the other rings of the torus
     for (int ring = 1; ring <= prec; ring++) {
       for (int vert = 0; vert <= prec; vert++) { // rotate the vertex positions of the original ring around the Y axis
         float rotAmt = (float) ((float) ring * 360.0f / prec);
-        Vector3D vp = new Vector3D(vertices[vert].getLocation());
-        Vector3D vpr = tRotateY(vp, rotAmt);
+        Vector3f vp = new Vector3f(vertices[vert].getLocation());
+        Vector3f vpr = tRotateY(vp, rotAmt);
         vertices[ring * (prec + 1) + vert].setLocation(new Point3D(vpr));
 // compute the texture coordinates for the vertices in the new rings
         vertices[ring * (prec + 1) + vert].setS((float) ring / (float) prec);
@@ -70,7 +70,7 @@ public class Torus {
         tTangent[ring * (prec + 1) + vert] = tRotateY(tTangent[vert], rotAmt);
         bTangent[ring * (prec + 1) + vert] = tRotateY(bTangent[vert], rotAmt);
 // rotate the normal vector around the Y axis
-        Vector3D normalRotateY = tRotateY(vertices[vert].getNormal(), rotAmt);
+        Vector3f normalRotateY = tRotateY(vertices[vert].getNormal(), rotAmt);
         vertices[ring * (prec + 1) + vert].setNormal(normalRotateY);
       }
     }
@@ -88,16 +88,16 @@ public class Torus {
   }
 // utility function for rotating a vector around the Y axis
 
-  private Vector3D tRotateY(Vector3D inVec, float amount) {
-    Matrix3D yMat = new Matrix3D();
+  private Vector3f tRotateY(Vector3f inVec, float amount) {
+    Matrix4f yMat = new Matrix4f();
     yMat.rotateY((double) amount);
-    Vector3D result = inVec.mult(yMat);
+    Vector3f result = inVec.mult(yMat);
     return result;
   }
 // utility function for rotating a point around the Z axis
 
   private Point3D tRotateZ(Point3D inPt, float amount) {
-    Matrix3D zMat = new Matrix3D();
+    Matrix4f zMat = new Matrix4f();
     zMat.rotateZ((double) amount);
     Point3D result = inPt.mult(zMat);
     return result;

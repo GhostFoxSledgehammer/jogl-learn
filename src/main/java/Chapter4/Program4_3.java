@@ -3,78 +3,94 @@
  */
 package Chapter4;
 
-import graphicslib3D.*;
+import Template.ZoomPanPanel;
 import java.nio.*;
 import javax.swing.*;
-import static com.jogamp.opengl.GL4.*;
 import com.jogamp.opengl.*;
-import com.jogamp.opengl.awt.GLCanvas;
 import com.jogamp.common.nio.Buffers;
+import static com.jogamp.opengl.GL.GL_ARRAY_BUFFER;
+import static com.jogamp.opengl.GL.GL_CCW;
+import static com.jogamp.opengl.GL.GL_CULL_FACE;
+import static com.jogamp.opengl.GL.GL_CW;
+import static com.jogamp.opengl.GL.GL_DEPTH_BUFFER_BIT;
+import static com.jogamp.opengl.GL.GL_DEPTH_TEST;
+import static com.jogamp.opengl.GL.GL_FLOAT;
+import static com.jogamp.opengl.GL.GL_LEQUAL;
+import static com.jogamp.opengl.GL.GL_STATIC_DRAW;
+import static com.jogamp.opengl.GL.GL_TRIANGLES;
 import static com.jogamp.opengl.GL2ES2.GL_COMPILE_STATUS;
 import static com.jogamp.opengl.GL2ES2.GL_FRAGMENT_SHADER;
 import static com.jogamp.opengl.GL2ES2.GL_LINK_STATUS;
 import static com.jogamp.opengl.GL2ES2.GL_VERTEX_SHADER;
+import static com.jogamp.opengl.GL2ES3.GL_COLOR;
 import com.jogamp.opengl.GLContext;
-import static graphicslib3D.GLSLUtils.checkOpenGLError;
-import static graphicslib3D.GLSLUtils.printProgramLog;
-import static graphicslib3D.GLSLUtils.printShaderLog;
-import static utils.Math3Dutils.perspective;
+import org.joml.Matrix4f;
+import static utils.joglutils.checkOpenGLError;
+import static utils.joglutils.printProgramLog;
+import static utils.joglutils.printShaderLog;
 import static utils.joglutils.readShaderSource;
 
 /**
  *
  * @author kshan
  */
-public class Program4_3 extends JFrame implements GLEventListener {
-
-  private GLCanvas myCanvas;
+public class Program4_3 extends ZoomPanPanel implements GLEventListener {
+  private final FloatBuffer vals = Buffers.newDirectFloatBuffer(16);
   private int rendering_program;
-  private int vao[] = new int[1];
-  private int vbo[] = new int[2];
+  private final int vao[] = new int[1];
+  private final int vbo[] = new int[2];
   private float cameraX, cameraY, cameraZ;
   private float cubeLocX, cubeLocY, cubeLocZ;
   private float pyrLocX, pyrLocY, pyrLocZ;
-  private GLSLUtils util = new GLSLUtils();
-  private Matrix3D pMat;
+  
+  private final Matrix4f mMat = new Matrix4f(); // model matrix
+  private final Matrix4f mvMat = new Matrix4f(); // model-view matrix
+  private int mvLoc, pLoc;
 
   public Program4_3() {
-    setTitle("Chapter4 - program3-multiple shapes");
-    setSize(600, 600);
-    myCanvas = new GLCanvas();
-    myCanvas.addGLEventListener(this);
-    this.add(myCanvas);
-    setVisible(true);
-    this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
   }
 
+  @Override
   public void init(GLAutoDrawable drawable) {
     GL4 gl = (GL4) GLContext.getCurrentGL();
     rendering_program = createShaderProgram();
     setupVertices();
-    cameraX = 0.0f;
-    cameraY = 0.0f;
-    cameraZ = 8.0f;
-    cubeLocX = 0.0f;
+    cubeLocX = -2.0f;
     cubeLocY = -2.0f;
-    cubeLocZ = 0.0f;
-    pyrLocX = 0.0f;
-    pyrLocY = 2.0f;
-    pyrLocZ = 0.0f;
-    float aspect = (float) myCanvas.getWidth() / (float) myCanvas.getHeight();
-    pMat = perspective(70.0f, aspect, 0.1f, 1000.0f);
+    cubeLocZ = -2.0f;
+    
+    pyrLocX = 2f;
+    pyrLocY = -1.0f;
+    pyrLocZ = -2.0f;
+vMat.set(camera.getViewMatrix());
+// shifted down along    the Y    -axis to reveal perspective
+    // Create a perspective matrix, this one has fovy=60, aspect ratio    matches screen window.
+    // Values for near and far clipping planes can vary as discussed in Section 4.9.
+    aspect = (float) getWidth() / (float) getHeight();
+    pMat.setPerspective((float) Math.toRadians(fov), aspect, 0.1f, 1000.0f);
   }
 // main(), reshape(), and dispose() are are unchanged
 
   public static void main(String[] args) {
-    new Program4_3();
+    JFrame jf = new JFrame();
+    jf.setTitle("Chapter4 - program3");
+    jf.setSize(600, 600);
+    jf.add(new Program4_3());
+    jf.setVisible(true);
+    jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
   }
 
+  @Override
   public void reshape(GLAutoDrawable drawable, int x, int y, int width, int height) {
+    aspect = (float) width / (float) height;
+    pMat.setPerspective((float) Math.toRadians(fov), aspect, 0.1f, 1000.0f);
   }
 
+  @Override
   public void dispose(GLAutoDrawable drawable) {
   }
 
+  @Override
   public void display(GLAutoDrawable drawable) {
     GL4 gl = (GL4) GLContext.getCurrentGL();
     gl.glClear(GL_DEPTH_BUFFER_BIT);
@@ -82,82 +98,74 @@ public class Program4_3 extends JFrame implements GLEventListener {
     FloatBuffer bkgBuffer = Buffers.newDirectFloatBuffer(bkg);
     gl.glClearBufferfv(GL_COLOR, 0, bkgBuffer);
     gl.glUseProgram(rendering_program);
-    //gl.glEnable(GL_CULL_FACE);
 // build view matrix
-    Matrix3D vMat = new Matrix3D();
-    vMat.translate(-cameraX, -cameraY, -cameraZ);
 // build model matrix
-    Matrix3D mMat = new Matrix3D();
-    mMat.translate(cubeLocX, cubeLocY, cubeLocZ);
+    mMat.translation(cubeLocX, cubeLocY, cubeLocZ);
 // concatenate model and view matrix to create MV matrix
-    Matrix3D mvMat = new Matrix3D();
-    mvMat.concatenate(vMat);
-    mvMat.concatenate(mMat);
+    mvMat.identity();
+    mvMat.mul(vMat);
+    mvMat.mul(mMat);
 // copy perspective and MV matrices to corresponding uniform variables
-    int mv_loc = gl.glGetUniformLocation(rendering_program, "mv_matrix");
-    int proj_loc = gl.glGetUniformLocation(rendering_program, "proj_matrix");
-    gl.glUniformMatrix4fv(proj_loc, 1, false, pMat.getFloatValues(), 0);
-    gl.glUniformMatrix4fv(mv_loc, 1, false, mvMat.getFloatValues(), 0);
+    mvLoc = gl.glGetUniformLocation(rendering_program, "mv_matrix");
+    pLoc = gl.glGetUniformLocation(rendering_program, "proj_matrix");
+    gl.glUniformMatrix4fv(pLoc, 1, false, pMat.get(vals));
+    gl.glUniformMatrix4fv(mvLoc, 1, false, mvMat.get(vals));
 // associate VBO with the corresponding vertex attribute in the vertexshader 
     gl.glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
     gl.glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, 0);
     gl.glEnableVertexAttribArray(0);
-// adjust OpenGL settings and draw model
     gl.glEnable(GL_DEPTH_TEST);
     gl.glDepthFunc(GL_LEQUAL);
-    //gl.glFrontFace(GL_CW);
     gl.glDrawArrays(GL_TRIANGLES, 0, 36);
-    mMat = new Matrix3D();
-    mMat.translate(pyrLocX, pyrLocY, pyrLocZ);
-    mvMat = new Matrix3D();
-    mvMat.concatenate(vMat);
-    mvMat.concatenate(mMat);
-    gl.glUniformMatrix4fv(mv_loc, 1, false, mvMat.getFloatValues(), 0);
-    gl.glUniformMatrix4fv(proj_loc, 1, false, pMat.getFloatValues(), 0); 
-      gl.glBindBuffer(GL_ARRAY_BUFFER, vbo[1]);
+// draw the pyramid (use buffer #1)
+    mMat.translation(pyrLocX, pyrLocY, pyrLocZ);
+    mvMat.identity();
+    mvMat.mul(vMat);
+    mvMat.mul(mMat);
+    gl.glUniformMatrix4fv(mvLoc, 1, false, mvMat.get(vals));
+    gl.glUniformMatrix4fv(pLoc, 1, false, pMat.get(vals));
+// (repeated for clarity)
+    gl.glBindBuffer(GL_ARRAY_BUFFER, vbo[1]);
     gl.glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, 0);
     gl.glEnableVertexAttribArray(0);
     gl.glEnable(GL_DEPTH_TEST);
     gl.glDepthFunc(GL_LEQUAL);
-    //gl.glFrontFace(GL_CCW);
     gl.glDrawArrays(GL_TRIANGLES, 0, 18);
   }
 
   private void setupVertices() {
     GL4 gl = (GL4) GLContext.getCurrentGL();
-// 36 vertices of the 12 triangles making up a 2 x 2 x 2 cube centered    at the origin
-    float[] cube_positions
-            = {-1.0f, 1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f,
-              -1.0f, -1.0f, 1.0f, 1.0f, -1.0f, -1.0f, 1.0f, -1.0f,
-              1.0f, -1.0f, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 1.0f, -1.0f, 1.0f,
-              -1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, -1.0f,
-              1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 1.0f, -1.0f,
-              -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-              -1.0f, -1.0f, 1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f, 1.0f, -1.0f,
-              -1.0f, -1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f, 1.0f,
-              -1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f, 1.0f, -1.0f, -1.0f, 1.0f,
-              -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,
-              -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-              1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f, -1.0f
-            };
-    float[] pyramid_positions = 
-    {-1, -1, 1, 1, -1, 1, 0, 1, 0, //front
-      1, -1, 1, 1, -1, -1, 0, 1, 0,//right face
-      1, -1, -1, -1, -1, -1, 0, 1, 0, //back face
-      -1, -1, -1, -1, -1, 1, 0, 1, 0, //left face
-      -1, -1, -1, 1, -1, 1, -1, -1, 1, // base-left block
-      1, -1, 1, -1, -1, -1, 1, -1, -1 // base - right block
+    float[] cubePositions
+    = {-1.0f, 1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f,
+      -1.0f, -1.0f, 1.0f, 1.0f, -1.0f, -1.0f, 1.0f, -1.0f,
+      1.0f, -1.0f, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 1.0f, -1.0f, 1.0f,
+      -1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, -1.0f,
+      1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 1.0f, -1.0f,
+      -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+      -1.0f, -1.0f, 1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f, 1.0f, -1.0f,
+      -1.0f, -1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f, 1.0f,
+      -1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f, 1.0f, -1.0f, -1.0f, 1.0f,
+      -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,
+      -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+      1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f, -1.0f
     };
+// pyramid with 18 vertices, comprising 6 triangles (four sides, and two on the bottom)
+    float[] pyramidPositions
+    = {-1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f, 0.0f, 1.0f, 0.0f, // front face
+      1.0f, -1.0f, 1.0f, 1.0f, -1.0f, -1.0f, 0.0f, 1.0f, 0.0f, // right face
+      1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 0.0f, 1.0f, 0.0f, // back face
+      -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f, 0.0f, 1.0f, 0.0f, // left face
+      -1.0f, -1.0f, -1.0f, 1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f, // base – left front
+      1.0f, -1.0f, 1.0f, -1.0f, -1.0f, -1.0f, 1.0f, -1.0f, -1.0f // base – right back
+  };
     gl.glGenVertexArrays(vao.length, vao, 0);
     gl.glBindVertexArray(vao[0]);
     gl.glGenBuffers(vbo.length, vbo, 0);
-
     gl.glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
-    FloatBuffer cubeBuf = Buffers.newDirectFloatBuffer(cube_positions);
+    FloatBuffer cubeBuf = Buffers.newDirectFloatBuffer(cubePositions);
     gl.glBufferData(GL_ARRAY_BUFFER, cubeBuf.limit() * 4, cubeBuf, GL_STATIC_DRAW);
-
     gl.glBindBuffer(GL_ARRAY_BUFFER, vbo[1]);
-    FloatBuffer pyrBuf = Buffers.newDirectFloatBuffer(pyramid_positions);
+    FloatBuffer pyrBuf = Buffers.newDirectFloatBuffer(pyramidPositions);
     gl.glBufferData(GL_ARRAY_BUFFER, pyrBuf.limit() * 4, pyrBuf, GL_STATIC_DRAW);
   }
 
@@ -196,7 +204,7 @@ public class Program4_3 extends JFrame implements GLEventListener {
     if ((vertCompiled[0] != 1) || (fragCompiled[0] != 1)) {
       System.out.println("\nCompilation error; return-flags:");
       System.out.println(" vertCompiled = " + vertCompiled[0]
-              + "fragCompiled =  " + fragCompiled[0]);
+      + "fragCompiled =  " + fragCompiled[0]);
     } else {
       System.out.println("Successful compilation");
     }

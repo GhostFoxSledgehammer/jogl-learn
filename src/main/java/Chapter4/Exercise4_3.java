@@ -3,12 +3,11 @@
  */
 package Chapter4;
 
-import graphicslib3D.*;
 import java.nio.*;
 import javax.swing.*;
 import static com.jogamp.opengl.GL4.*;
 import com.jogamp.opengl.*;
-import com.jogamp.opengl.awt.GLCanvas;
+import com.jogamp.opengl.awt.GLJPanel;
 import com.jogamp.common.nio.Buffers;
 import static com.jogamp.opengl.GL2ES2.GL_COMPILE_STATUS;
 import static com.jogamp.opengl.GL2ES2.GL_FRAGMENT_SHADER;
@@ -16,11 +15,9 @@ import static com.jogamp.opengl.GL2ES2.GL_LINK_STATUS;
 import static com.jogamp.opengl.GL2ES2.GL_VERTEX_SHADER;
 import com.jogamp.opengl.GLContext;
 import com.jogamp.opengl.util.FPSAnimator;
-import static graphicslib3D.GLSLUtils.checkOpenGLError;
-import static graphicslib3D.GLSLUtils.printProgramLog;
-import static graphicslib3D.GLSLUtils.printShaderLog;
 import static java.lang.Math.cos;
 import static java.lang.Math.sin;
+import org.joml.Matrix4f;
 import static utils.Math3Dutils.perspective;
 import static utils.joglutils.readShaderSource;
 
@@ -30,20 +27,19 @@ import static utils.joglutils.readShaderSource;
  */
 public class Exercise4_3 extends JFrame implements GLEventListener {
 
-  private GLCanvas myCanvas;
+  private GLJPanel myCanvas;
   private int rendering_program;
   private int vao[] = new int[1];
   private int vbo[] = new int[3];
   private float cameraX, cameraY, cameraZ;
   private float cubeLocX, cubeLocY, cubeLocZ;
   private float pyrLocX, pyrLocY, pyrLocZ;
-  private GLSLUtils util = new GLSLUtils();
-  private Matrix3D pMat;
+  private Matrix4f pMat;
 
   public Exercise4_3() {
     setTitle("Chapter4 - exercise1");
     setSize(600, 600);
-    myCanvas = new GLCanvas();
+    myCanvas = new GLJPanel();
     myCanvas.addGLEventListener(this);
     this.add(myCanvas);
     setVisible(true);

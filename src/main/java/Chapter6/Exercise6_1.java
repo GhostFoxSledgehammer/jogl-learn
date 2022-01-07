@@ -4,12 +4,12 @@
 package Chapter6;
 
 import Math.Sphere;
-import graphicslib3D.*;
+import .*;
 import java.nio.*;
 import javax.swing.*;
 import static com.jogamp.opengl.GL4.*;
 import com.jogamp.opengl.*;
-import com.jogamp.opengl.awt.GLCanvas;
+import com.jogamp.opengl.awt.GLJPanel;
 import com.jogamp.common.nio.Buffers;
 import static com.jogamp.opengl.GL.GL_TEXTURE0;
 import static com.jogamp.opengl.GL.GL_TEXTURE_2D;
@@ -21,9 +21,9 @@ import static com.jogamp.opengl.GL2ES2.GL_VERTEX_SHADER;
 import com.jogamp.opengl.GLContext;
 import com.jogamp.opengl.util.FPSAnimator;
 import com.jogamp.opengl.util.texture.Texture;
-import static graphicslib3D.GLSLUtils.checkOpenGLError;
-import static graphicslib3D.GLSLUtils.printProgramLog;
-import static graphicslib3D.GLSLUtils.printShaderLog;
+import static ..checkOpenGLError;
+import static ..printProgramLog;
+import static ..printShaderLog;
 import static utils.Math3Dutils.perspective;
 import static utils.joglutils.loadTexture;
 import static utils.joglutils.readShaderSource;
@@ -34,22 +34,22 @@ import static utils.joglutils.readShaderSource;
  */
 public class Exercise6_1 extends JFrame implements GLEventListener {
 
-  private GLCanvas myCanvas;
+  private GLJPanel myCanvas;
   private int rendering_program;
   private int vao[] = new int[1];
   private int vbo[] = new int[3];
   private float cameraX, cameraY, cameraZ;
   private float cubeLocX, cubeLocY, cubeLocZ;
   private float pyrLocX, pyrLocY, pyrLocZ;
-  private GLSLUtils util = new GLSLUtils();
-  private Matrix3D pMat;
+  private  util = new ();
+  private Matrix4f pMat;
   private Sphere mySphere;
   private int earthTexture, sunTexture, moonTexture;
 
   public Exercise6_1() {
     setTitle("Chapter4 - program4");
     setSize(600, 600);
-    myCanvas = new GLCanvas();
+    myCanvas = new GLJPanel();
     myCanvas.addGLEventListener(this);
     this.add(myCanvas);
     setVisible(true);

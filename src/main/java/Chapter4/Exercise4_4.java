@@ -3,12 +3,12 @@
  */
 package Chapter4;
 
-import graphicslib3D.*;
+import .*;
 import java.nio.*;
 import javax.swing.*;
 import static com.jogamp.opengl.GL4.*;
 import com.jogamp.opengl.*;
-import com.jogamp.opengl.awt.GLCanvas;
+import com.jogamp.opengl.awt.GLJPanel;
 import com.jogamp.common.nio.Buffers;
 import static com.jogamp.opengl.GL2ES2.GL_COMPILE_STATUS;
 import static com.jogamp.opengl.GL2ES2.GL_FRAGMENT_SHADER;
@@ -16,9 +16,9 @@ import static com.jogamp.opengl.GL2ES2.GL_LINK_STATUS;
 import static com.jogamp.opengl.GL2ES2.GL_VERTEX_SHADER;
 import com.jogamp.opengl.GLContext;
 import com.jogamp.opengl.util.FPSAnimator;
-import static graphicslib3D.GLSLUtils.checkOpenGLError;
-import static graphicslib3D.GLSLUtils.printProgramLog;
-import static graphicslib3D.GLSLUtils.printShaderLog;
+import static ..checkOpenGLError;
+import static ..printProgramLog;
+import static ..printShaderLog;
 import static utils.Math3Dutils.perspective;
 import static utils.joglutils.readShaderSource;
 
@@ -28,20 +28,20 @@ import static utils.joglutils.readShaderSource;
  */
 public class Exercise4_4 extends JFrame implements GLEventListener {
 
-  private GLCanvas myCanvas;
+  private GLJPanel myCanvas;
   private int rendering_program;
   private int vao[] = new int[1];
   private int vbo[] = new int[2];
   private float cameraX, cameraY, cameraZ;
   private float cubeLocX, cubeLocY, cubeLocZ;
   private float pyrLocX, pyrLocY, pyrLocZ;
-  private GLSLUtils util = new GLSLUtils();
-  private Matrix3D pMat;
+  private  util = new ();
+  private Matrix4f pMat;
 
   public Exercise4_4() {
     setTitle("Chapter4 - exercise1-focus on object");
     setSize(600, 600);
-    myCanvas = new GLCanvas();
+    myCanvas = new GLJPanel();
     myCanvas.addGLEventListener(this);
     this.add(myCanvas);
     setVisible(true);
@@ -91,7 +91,7 @@ public class Exercise4_4 extends JFrame implements GLEventListener {
     mvStack.pushMatrix();
     Point3D camPos = new Point3D(cameraX, cameraY, cameraZ);
     Point3D viewPos = new Point3D(pyrLocX + Math.sin(amt) * 4.0f, pyrLocY + Math.sin(amt) * 2.0f, pyrLocZ + Math.cos(amt) * 6.0f);
-    mvStack.loadMatrix(lookAt(camPos, viewPos, new Vector3D(0, 1, 0, 0)));
+    mvStack.loadMatrix(lookAt(camPos, viewPos, new Vector3f(0, 1, 0, 0)));
 // build model matrix
     mvStack.pushMatrix();
     mvStack.translate(pyrLocX, pyrLocY, pyrLocZ);
@@ -234,13 +234,13 @@ public class Exercise4_4 extends JFrame implements GLEventListener {
     return vfprogram;
   }
 
-  private Matrix3D lookAt(Point3D eye, Point3D target, Vector3D y) {
-    Vector3D eyeV = new Vector3D(eye);
-    Vector3D targetV = new Vector3D(target);
-    Vector3D fwd = (targetV.minus(eyeV)).normalize();
-    Vector3D side = (fwd.cross(y)).normalize();
-    Vector3D up = (side.cross(fwd)).normalize();
-    Matrix3D look = new Matrix3D();
+  private Matrix4f lookAt(Point3D eye, Point3D target, Vector3f y) {
+    Vector3f eyeV = new Vector3f(eye);
+    Vector3f targetV = new Vector3f(target);
+    Vector3f fwd = (targetV.minus(eyeV)).normalize();
+    Vector3f side = (fwd.cross(y)).normalize();
+    Vector3f up = (side.cross(fwd)).normalize();
+    Matrix4f look = new Matrix4f();
     look.setElementAt(0, 0, side.getX());
     look.setElementAt(1, 0, up.getX());
     look.setElementAt(2, 0, -fwd.getX());
