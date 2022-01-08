@@ -3,10 +3,9 @@
  */
 package Math;
 
-import .Point3D;
-import .Vector3f;
-import .Vertex3D;
 import static java.lang.Math.*;
+import org.joml.Vector2f;
+import org.joml.Vector3f;
 
 /**
  *
@@ -16,7 +15,9 @@ public class Sphere {
 
   private int numVertices, numIndices, prec; // prec = precision
   private int[] indices;
-  private Vertex3D[] vertices;
+  private Vector3f[] vertices;
+  private Vector2f[] texCoords;
+  private Vector3f[] normals;
 
   public Sphere(int p) {
     prec = p;
@@ -26,10 +27,14 @@ public class Sphere {
   private void initSphere() {
     numVertices = (prec + 1) * (prec + 1);
     numIndices = prec * prec * 6;
-    vertices = new Vertex3D[numVertices];
+    vertices = new Vector3f[numVertices];
+    texCoords = new Vector2f[numVertices];
+    normals = new Vector3f[numVertices];
     indices = new int[numIndices];
     for (int i = 0; i < numVertices; i++) {
-      vertices[i] = new Vertex3D();
+      vertices[i] = new Vector3f();
+      texCoords[i] = new Vector2f();
+      normals[i] = new Vector3f();
     }
 // calculate triangle vertices
     for (int i = 0; i <= prec; i++) {
@@ -37,10 +42,10 @@ public class Sphere {
         float y = (float) cos(toRadians(180 - i * 180 / prec));
         float x = -(float) cos(toRadians(j * 360 / prec)) * (float) abs(cos(asin(y)));
         float z = (float) sin(toRadians(j * 360 / prec)) * (float) abs(cos(asin(y)));
-        vertices[i * (prec + 1) + j].setLocation(x, y, z);
-        vertices[i * (prec + 1) + j].setS((float) j / prec); // texture coordinates (s,t)
-        vertices[i * (prec + 1) + j].setT((float) i / prec);
-        vertices[i * (prec + 1) + j].setNormal(new Vector3f(vertices[i * (prec + 1) + j].getLocation()));
+        vertices[i * (prec + 1) + j].set(x, y, z);
+        texCoords[i * (prec + 1) + j].set((float) j / prec, (float) i / prec
+        );
+        normals[i * (prec + 1) + j].set(x, y, z);
       }
     }
 // calculate triangle indices
@@ -56,11 +61,27 @@ public class Sphere {
     }
   }
 
+  public int getNumIndices() {
+    return numIndices;
+  }
+
+  public int getNumVertices() {
+    return numIndices;
+  }
+
   public int[] getIndices() {
     return indices;
   }
 
-  public Vertex3D[] getVertices() {
+  public Vector3f[] getVertices() {
     return vertices;
+  }
+
+  public Vector2f[] getTexCoords() {
+    return texCoords;
+  }
+
+  public Vector3f[] getNormals() {
+    return normals;
   }
 }

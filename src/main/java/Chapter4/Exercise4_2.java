@@ -3,82 +3,102 @@
  */
 package Chapter4;
 
+import Template.ZoomPanPanel;
 import java.nio.*;
 import javax.swing.*;
-import static com.jogamp.opengl.GL4.*;
 import com.jogamp.opengl.*;
-import com.jogamp.opengl.awt.GLJPanel;
 import com.jogamp.common.nio.Buffers;
+import static com.jogamp.opengl.GL.GL_ARRAY_BUFFER;
+import static com.jogamp.opengl.GL.GL_DEPTH_BUFFER_BIT;
+import static com.jogamp.opengl.GL.GL_DEPTH_TEST;
+import static com.jogamp.opengl.GL.GL_FLOAT;
+import static com.jogamp.opengl.GL.GL_LEQUAL;
+import static com.jogamp.opengl.GL.GL_STATIC_DRAW;
+import static com.jogamp.opengl.GL.GL_TRIANGLES;
 import static com.jogamp.opengl.GL2ES2.GL_COMPILE_STATUS;
 import static com.jogamp.opengl.GL2ES2.GL_FRAGMENT_SHADER;
 import static com.jogamp.opengl.GL2ES2.GL_LINK_STATUS;
 import static com.jogamp.opengl.GL2ES2.GL_VERTEX_SHADER;
+import static com.jogamp.opengl.GL2ES3.GL_COLOR;
 import com.jogamp.opengl.GLContext;
 import com.jogamp.opengl.util.FPSAnimator;
+import static java.lang.Math.cos;
+import static java.lang.Math.sin;
 import org.joml.Matrix4f;
-import org.joml.Vector3f;
-import static utils.Math3Dutils.perspective;
+import org.joml.Matrix4fStack;
+import static utils.joglutils.checkOpenGLError;
+import static utils.joglutils.printProgramLog;
+import static utils.joglutils.printShaderLog;
 import static utils.joglutils.readShaderSource;
 
 /**
  *
  * @author kshan
  */
-public class Exercise4_2 extends JFrame implements GLEventListener {
+public class Exercise4_2 extends ZoomPanPanel implements GLEventListener {
 
-  private GLJPanel myCanvas;
+  private final FloatBuffer vals = Buffers.newDirectFloatBuffer(16);
   private int rendering_program;
-  private int vao[] = new int[1];
-  private int vbo[] = new int[2];
+  private final int vao[] = new int[1];
+  private final int vbo[] = new int[2];
   private float cameraX, cameraY, cameraZ;
   private float cubeLocX, cubeLocY, cubeLocZ;
-  private Matrix4f pMat;
-  Vector3f u, v, n;
-  double theta =1,phi;
+  private float pyrLocX, pyrLocY, pyrLocZ;
+  private Matrix4fStack mvStack = new Matrix4fStack(5);
+
+  private final Matrix4f mMat = new Matrix4f(); // model matrix
+  private final Matrix4f mvMat = new Matrix4f(); // model-view matrix
+  private int mvLoc, pLoc;
+  private long startTime;
 
   public Exercise4_2() {
-    setTitle("Chapter4 - exercise1");
-    setSize(600, 600);
-    myCanvas = new GLJPanel();
-    myCanvas.addGLEventListener(this);
-    this.add(myCanvas);
-    setVisible(true);
-    FPSAnimator animtr = new FPSAnimator(myCanvas, 60);
-    animtr.start();
-    this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
   }
 
+  @Override
   public void init(GLAutoDrawable drawable) {
     GL4 gl = (GL4) GLContext.getCurrentGL();
     rendering_program = createShaderProgram();
     setupVertices();
-    cameraX = 0.0f;
-    cameraY = 0.0f;
-    cameraZ = 8.0f;
-    cubeLocX = 0.0f;
-    cubeLocY = -1.0f;
-    cubeLocZ = 0.0f;
-    // shifted down along    the Y    -axis to reveal perspective
+    cubeLocX = 1.0f;
+    cubeLocY = 1.0f;
+    cubeLocZ = -8.0f;
+
+    pyrLocX = 20f;
+    pyrLocY = 1.0f;
+    pyrLocZ = -2.0f;
+    vMat.set(camera.getViewMatrix());
+    FPSAnimator animtr = new FPSAnimator(this, 50);
+    animtr.start();
+// shifted down along    the Y    -axis to reveal perspective
     // Create a perspective matrix, this one has fovy=60, aspect ratio    matches screen window.
     // Values for near and far clipping planes can vary as discussed in Section 4.9.
-    float aspect = (float) myCanvas.getWidth() / (float) myCanvas.getHeight();
-    pMat = perspective(70.0f, aspect, 0.1f, 1000.0f);
-    u = new Vector3f(1, 0, 0, 0);
-    v = new Vector3f(0, 1, 0, 0);
-    n = u.cross(v);
+    aspect = (float) getWidth() / (float) getHeight();
+    pMat.setPerspective((float) Math.toRadians(fov), aspect, 0.1f, 1000.0f);
+    startTime = System.currentTimeMillis();
   }
 // main(), reshape(), and dispose() are are unchanged
 
   public static void main(String[] args) {
-    new Exercise4_2();
+    JFrame jf = new JFrame();
+    jf.setTitle("Chapter4 - program1");
+    jf.setSize(600, 600);
+    jf.add(new Exercise4_2());
+    jf.setVisible(true);
+    jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
   }
 
+  @Override
   public void reshape(GLAutoDrawable drawable, int x, int y, int width, int height) {
+    aspect = (float) width / (float) height;
+    pMat.setPerspective((float) Math.toRadians(fov), aspect, 0.1f, 1000.0f);
+    drawable.getContext().getGL().glViewport(0, 0, width, height);
   }
 
+  @Override
   public void dispose(GLAutoDrawable drawable) {
   }
 
+  @Override
   public void display(GLAutoDrawable drawable) {
     GL4 gl = (GL4) GLContext.getCurrentGL();
     gl.glClear(GL_DEPTH_BUFFER_BIT);
@@ -86,23 +106,16 @@ public class Exercise4_2 extends JFrame implements GLEventListener {
     FloatBuffer bkgBuffer = Buffers.newDirectFloatBuffer(bkg);
     gl.glClearBufferfv(GL_COLOR, 0, bkgBuffer);
     gl.glUseProgram(rendering_program);
-// build view matrix
-    Matrix4f vMat = new Matrix4f();
-    rotate(phi, theta);
-    vMat.concatenate(rotationMat(u,v,n));
-    vMat.translate(-cameraX, -cameraY, -cameraZ);
-// build model matrix
-    Matrix4f mMat = new Matrix4f();
-    mMat.translate(cubeLocX, cubeLocY, cubeLocZ);
+    mMat.translation(cubeLocX, cubeLocY, cubeLocZ);
 // concatenate model and view matrix to create MV matrix
-    Matrix4f mvMat = new Matrix4f();
-    mvMat.concatenate(vMat);
-    mvMat.concatenate(mMat);
+    mvMat.identity();
+    mvMat.mul(vMat);
+    mvMat.mul(mMat);
 // copy perspective and MV matrices to corresponding uniform variables
     int mv_loc = gl.glGetUniformLocation(rendering_program, "mv_matrix");
     int proj_loc = gl.glGetUniformLocation(rendering_program, "proj_matrix");
-    gl.glUniformMatrix4fv(proj_loc, 1, false, pMat.getFloatValues(), 0);
-    gl.glUniformMatrix4fv(mv_loc, 1, false, mvMat.getFloatValues(), 0);
+    gl.glUniformMatrix4fv(proj_loc, 1, false, pMat.get(vals));
+    gl.glUniformMatrix4fv(mv_loc, 1, false, mvMat.get(vals));
 // associate VBO with the corresponding vertex attribute in the vertexshader 
     gl.glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
     gl.glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, 0);
@@ -115,28 +128,29 @@ public class Exercise4_2 extends JFrame implements GLEventListener {
 
   private void setupVertices() {
     GL4 gl = (GL4) GLContext.getCurrentGL();
-// 36 vertices of the 12 triangles making up a 2 x 2 x 2 cube centered    at the origin
+// 24 vertices of the 8 triangles making up a prism
+    float sin0 = (float) sin(0);
+    float cos0 = (float) cos(0);
+    float sin120 = (float) sin(Math.toRadians(120));
+    float cos120 = (float) cos(Math.toRadians(120));
+    float sin240 = -sin120;
+    float cos240 = cos120;
     float[] vertex_positions
-            = {-1.0f, 1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f,
-              -1.0f, -1.0f, 1.0f, 1.0f, -1.0f, -1.0f, 1.0f, -1.0f,
-              1.0f, -1.0f, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 1.0f, -1.0f, 1.0f,
-              -1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, -1.0f,
-              1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 1.0f, -1.0f,
-              -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-              -1.0f, -1.0f, 1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f, 1.0f, -1.0f,
-              -1.0f, -1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f, 1.0f,
-              -1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f, 1.0f, -1.0f, -1.0f, 1.0f,
-              -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,
-              -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-              1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f, -1.0f
-            };
+    = {sin0, cos0, -1, sin120, cos120, -1, sin240, cos240, -1,
+      sin0, cos0, 1, sin120, cos120, 1, sin240, cos240, 1,
+      sin0, cos0, -1, sin120, cos120, -1, sin0, cos0, 1,
+      sin120, cos120, -1, sin120, cos120, 1, sin0, cos0, 1,
+      sin0, cos0, -1, sin240, cos240, -1, sin0, cos0, 1,
+      sin240, cos240, -1, sin240, cos240, 1, sin0, cos0, 1,
+      sin120, cos120, -1, sin240, cos240, -1, sin120, cos120, 1,
+      sin240, cos240, -1, sin240, cos240, 1, sin120, cos120, 1};
     gl.glGenVertexArrays(vao.length, vao, 0);
     gl.glBindVertexArray(vao[0]);
     gl.glGenBuffers(vbo.length, vbo, 0);
     gl.glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
     FloatBuffer vertBuf = Buffers.newDirectFloatBuffer(vertex_positions);
     gl.glBufferData(GL_ARRAY_BUFFER, vertBuf.limit() * 4, vertBuf,
-            GL_STATIC_DRAW);
+    GL_STATIC_DRAW);
   }
 
   private int createShaderProgram() {
@@ -174,7 +188,7 @@ public class Exercise4_2 extends JFrame implements GLEventListener {
     if ((vertCompiled[0] != 1) || (fragCompiled[0] != 1)) {
       System.out.println("\nCompilation error; return-flags:");
       System.out.println(" vertCompiled = " + vertCompiled[0]
-              + "fragCompiled =  " + fragCompiled[0]);
+      + "fragCompiled =  " + fragCompiled[0]);
     } else {
       System.out.println("Successful compilation");
     }
@@ -197,22 +211,5 @@ public class Exercise4_2 extends JFrame implements GLEventListener {
     gl.glDeleteShader(vShader);
     gl.glDeleteShader(fShader);
     return vfprogram;
-  }
-
-  private Matrix4f rotationMat(Vector3f u, Vector3f v, Vector3f n) {
-    Matrix4f r = new Matrix4f();
-    r.setRow(0, u);
-    r.setRow(1, v);
-    r.setRow(2, n);
-    r.setRow(3, new Vector3f(0, 0, 0, 1));
-    return r;
-  }
-
-  private void rotate(double theta, double phi) {
-    Matrix4f rotationMat = rotationMat(u, v, n);
-    rotationMat.rotate(theta, phi, 0);
-    u = rotationMat.getRow(0);
-    v = rotationMat.getRow(1);
-    n = rotationMat.getRow(2);
   }
 }

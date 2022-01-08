@@ -16,7 +16,11 @@ import static com.jogamp.opengl.GL.GL_RGBA;
 import static com.jogamp.opengl.GL.GL_TEXTURE_2D;
 import static com.jogamp.opengl.GL.GL_TEXTURE_MIN_FILTER;
 import static com.jogamp.opengl.GL.GL_UNSIGNED_BYTE;
+import static com.jogamp.opengl.GL2ES2.GL_COMPILE_STATUS;
+import static com.jogamp.opengl.GL2ES2.GL_FRAGMENT_SHADER;
 import static com.jogamp.opengl.GL2ES2.GL_INFO_LOG_LENGTH;
+import static com.jogamp.opengl.GL2ES2.GL_LINK_STATUS;
+import static com.jogamp.opengl.GL2ES2.GL_VERTEX_SHADER;
 import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.util.texture.Texture;
 import com.jogamp.opengl.util.texture.TextureIO;
@@ -122,5 +126,66 @@ public class joglutils {
         System.err.print((char) log[i]);
       }
     }
+  }
+  
+
+  public static int createShaderProgram(String vPath, String fPath) {
+
+    int[] vertCompiled = new int[1];
+    int[] fragCompiled = new int[1];
+    int[] linked = new int[1];
+    GL4 gl = (GL4) GLContext.getCurrentGL();
+    String[] vshaderSource = readShaderSource(vPath);
+    String[] fshaderSource = readShaderSource(fPath);
+    int vShader = gl.glCreateShader(GL_VERTEX_SHADER);
+    gl.glShaderSource(vShader, vshaderSource.length, vshaderSource, null, 0);
+    gl.glCompileShader(vShader);
+    checkOpenGLError(); // can use returned boolean
+    gl.glGetShaderiv(vShader, GL_COMPILE_STATUS, vertCompiled, 0);
+    if (vertCompiled[0] == 1) {
+      System.out.println("vShader vertex compilation success.");
+    } else {
+      System.out.println("vShader vertex compilation failed.");
+      printShaderLog(vShader);
+    }
+
+    int fShader = gl.glCreateShader(GL_FRAGMENT_SHADER);
+    gl.glShaderSource(fShader, fshaderSource.length, fshaderSource, null, 0);
+    gl.glCompileShader(fShader);
+    checkOpenGLError(); // can use returned boolean
+    gl.glGetShaderiv(fShader, GL_COMPILE_STATUS, fragCompiled, 0);
+    if (fragCompiled[0] == 1) {
+      System.out.println("fShader fragment compilation success.");
+    } else {
+      System.out.println("fShader fragment compilation failed.");
+      printShaderLog(fShader);
+    }
+
+    if ((vertCompiled[0] != 1) || (fragCompiled[0] != 1)) {
+      System.out.println("\nCompilation error; return-flags:");
+      System.out.println(" vertCompiled = " + vertCompiled[0]
+      + "fragCompiled =  " + fragCompiled[0]);
+    } else {
+      System.out.println("Successful compilation");
+    }
+
+    int vfprogram = gl.glCreateProgram();
+    gl.glAttachShader(vfprogram, vShader);
+    gl.glAttachShader(vfprogram, fShader);
+    gl.glLinkProgram(vfprogram);
+    gl.glLinkProgram(vfprogram);
+
+    checkOpenGLError();
+    gl.glGetProgramiv(vfprogram, GL_LINK_STATUS, linked, 0);
+    if (linked[0] == 1) {
+      System.out.println("vfprogram linking succeeded.");
+    } else {
+      System.out.println("vfprogram linking failed.");
+      printProgramLog(vfprogram);
+    }
+
+    gl.glDeleteShader(vShader);
+    gl.glDeleteShader(fShader);
+    return vfprogram;
   }
 }

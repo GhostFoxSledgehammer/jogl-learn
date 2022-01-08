@@ -3,90 +3,109 @@
  */
 package Chapter6;
 
+import Math.Sphere;
+import Math.Torus;
+import Template.ZoomPanPanel;
 import java.nio.*;
-import .*;
 import javax.swing.*;
-
-import static com.jogamp.opengl.GL4.*;
-import static com.jogamp.opengl.GL2ES2.GL_COMPILE_STATUS;
-import static com.jogamp.opengl.GL2ES2.GL_FRAGMENT_SHADER;
-import static com.jogamp.opengl.GL2ES2.GL_LINK_STATUS;
-import static com.jogamp.opengl.GL2ES2.GL_VERTEX_SHADER;
-import static ..checkOpenGLError;
-import static ..printProgramLog;
-import static ..printShaderLog;
-
 import com.jogamp.opengl.*;
-import com.jogamp.opengl.awt.GLJPanel;
 import com.jogamp.common.nio.Buffers;
+import static com.jogamp.opengl.GL.GL_ARRAY_BUFFER;
+import static com.jogamp.opengl.GL.GL_DEPTH_BUFFER_BIT;
+import static com.jogamp.opengl.GL.GL_DEPTH_TEST;
+import static com.jogamp.opengl.GL.GL_ELEMENT_ARRAY_BUFFER;
+import static com.jogamp.opengl.GL.GL_FLOAT;
+import static com.jogamp.opengl.GL.GL_LEQUAL;
+import static com.jogamp.opengl.GL.GL_MIRRORED_REPEAT;
+import static com.jogamp.opengl.GL.GL_STATIC_DRAW;
+import static com.jogamp.opengl.GL.GL_TEXTURE0;
+import static com.jogamp.opengl.GL.GL_TEXTURE_2D;
+import static com.jogamp.opengl.GL.GL_TEXTURE_WRAP_S;
+import static com.jogamp.opengl.GL.GL_TRIANGLES;
+import static com.jogamp.opengl.GL.GL_UNSIGNED_INT;
+import static com.jogamp.opengl.GL2ES3.GL_COLOR;
 import com.jogamp.opengl.GLContext;
 import com.jogamp.opengl.util.FPSAnimator;
-import com.jogamp.opengl.util.texture.*;
+import com.jogamp.opengl.util.texture.Texture;
+import org.joml.Matrix4f;
+import org.joml.Vector2f;
+import org.joml.Vector3f;
 import utils.ImportedModel;
-import static utils.Math3Dutils.perspective;
+import static utils.joglutils.createShaderProgram;
 import static utils.joglutils.loadTexture;
-import static utils.joglutils.readShaderSource;
 
 /**
  *
  * @author kshan
  */
-public class Program6_3 extends JFrame implements GLEventListener {
+public class Program6_3 extends ZoomPanPanel implements GLEventListener {
 
-  private final GLJPanel myCanvas;
+  private final FloatBuffer vals = Buffers.newDirectFloatBuffer(16);
   private int rendering_program;
   private final int vao[] = new int[1];
   private final int vbo[] = new int[4];
   private float cameraX, cameraY, cameraZ;
   private float cubeLocX, cubeLocY, cubeLocZ;
-  private  util = new ();
-  private Matrix4f pMat;
-  private int myTexture;
-  private ImportedModel myObj;
+  private int brickTexture;
+
+  private final Matrix4f mMat = new Matrix4f(); // model matrix
+  private final Matrix4f mvMat = new Matrix4f(); // model-view matrix
+  private int mvLoc, pLoc;
+  private long startTime;
+  private Sphere mySphere;
+  private int numSphereVerts;
+  private int numTorusVertices;
+  private int numTorusIndices;
+  private ImportedModel myModel;
   private int numObjVertices;
 
   public Program6_3() {
-    setTitle("Chapter5 - program1");
-    setSize(600, 600);
-    myCanvas = new GLJPanel();
-    myCanvas.addGLEventListener(this);
-    this.add(myCanvas);
-    setVisible(true);
-    FPSAnimator animtr = new FPSAnimator(myCanvas, 50);
-    animtr.start();
-    this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
   }
 
+  @Override
   public void init(GLAutoDrawable drawable) {
     GL4 gl = (GL4) GLContext.getCurrentGL();
-    rendering_program = createShaderProgram();
-    myObj = new ImportedModel("Chapter6/airplane.obj");
-    setupVertices(gl);
-    cameraX = 0.0f;
-    cameraY = 0.0f;
-    cameraZ = 2.0f;
-    cubeLocX = 0.0f;
-    cubeLocY = 0.0f;
-    cubeLocZ = 0.0f;
-    float aspect = (float) myCanvas.getWidth() / (float) myCanvas.getHeight();
-    pMat = perspective(70.0f, aspect, 0.1f, 1000.0f);
-    Texture joglBrickTexture = loadTexture("Chapter6/airplanebody.jpg");
-    myTexture = joglBrickTexture.getTextureObject();
+    rendering_program = createShaderProgram("Chapter5/P5_1vertex.shader", "Chapter5/P5_1frag.shader");
+    myModel = new ImportedModel("Chapter6/Handgun_obj.obj");
+    setupVertices();
+    cubeLocX = 2.0f;
+    cubeLocY = 2.0f;
+    cubeLocZ = -4.0f;
+    vMat.set(camera.getViewMatrix());
+    FPSAnimator animtr = new FPSAnimator(this, 50);
+    animtr.start();
+// shifted down along    the Y    -axis to reveal perspective
+    // Create a perspective matrix, this one has fovy=60, aspect ratio    matches screen window.
+    // Values for near and far clipping planes can vary as discussed in Section 4.9.
+    aspect = (float) getWidth() / (float) getHeight();
+    pMat.setPerspective((float) Math.toRadians(fov), aspect, 0.1f, 1000.0f);
+    Texture joglBrickTexture = loadTexture("Chapter5/brick.jpg");
+    brickTexture = joglBrickTexture.getTextureObject();
+    startTime = System.currentTimeMillis();
   }
 // main(), reshape(), and dispose() are are unchanged
 
   public static void main(String[] args) {
-    new Program6_3();
+    JFrame jf = new JFrame();
+    jf.setTitle("Chapter5 - program1");
+    jf.setSize(600, 600);
+    jf.add(new Program6_3());
+    jf.setVisible(true);
+    jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
   }
 
+  @Override
   public void reshape(GLAutoDrawable drawable, int x, int y, int width, int height) {
-    float aspect = (float) myCanvas.getWidth() / (float) myCanvas.getHeight();
-    pMat = perspective(70.0f, aspect, 0.1f, 1000.0f);
+    aspect = (float) width / (float) height;
+    pMat.setPerspective((float) Math.toRadians(fov), aspect, 0.1f, 1000.0f);
+    drawable.getContext().getGL().glViewport(0, 0, width, height);
   }
 
+  @Override
   public void dispose(GLAutoDrawable drawable) {
   }
 
+  @Override
   public void display(GLAutoDrawable drawable) {
     GL4 gl = (GL4) GLContext.getCurrentGL();
     gl.glClear(GL_DEPTH_BUFFER_BIT);
@@ -94,57 +113,57 @@ public class Program6_3 extends JFrame implements GLEventListener {
     FloatBuffer bkgBuffer = Buffers.newDirectFloatBuffer(bkg);
     gl.glClearBufferfv(GL_COLOR, 0, bkgBuffer);
     gl.glUseProgram(rendering_program);
-    //gl.glEnable(GL_CULL_FACE);
-// build view matrix
-    Matrix4f vMat = new Matrix4f();
-    vMat.translate(-cameraX, -cameraY, -cameraZ);
-// build model matrix
-    Matrix4f mMat = new Matrix4f();
-    double x = (double) (System.currentTimeMillis()) / 10000.0;
+    long elapsedTime = System.currentTimeMillis() - startTime;
+    float tf = elapsedTime / 1000f;
+    mMat.identity();
     mMat.translate(cubeLocX, cubeLocY, cubeLocZ);
-    mMat.rotate(500 * x, 1000 * x, 0);
-// concatenate model and view matrix to create MV matrix
-    Matrix4f mvMat = new Matrix4f();
-    mvMat.concatenate(vMat);
-    mvMat.concatenate(mMat);
+    mMat.rotateXYZ(tf, tf, tf);
+
+    mvMat.identity();
+    mvMat.mul(vMat);
+    mvMat.mul(mMat);
 // copy perspective and MV matrices to corresponding uniform variables
-    int mv_loc = gl.glGetUniformLocation(rendering_program, "mv_matrix");
-    int proj_loc = gl.glGetUniformLocation(rendering_program, "proj_matrix");
-    gl.glUniformMatrix4fv(proj_loc, 1, false, pMat.getFloatValues(), 0);
-    gl.glUniformMatrix4fv(mv_loc, 1, false, mvMat.getFloatValues(), 0);
+    mvLoc = gl.glGetUniformLocation(rendering_program, "mv_matrix");
+    pLoc = gl.glGetUniformLocation(rendering_program, "proj_matrix");
+    gl.glUniformMatrix4fv(pLoc, 1, false, pMat.get(vals));
+    gl.glUniformMatrix4fv(mvLoc, 1, false, mvMat.get(vals));
+
 // associate VBO with the corresponding vertex attribute in the vertexshader 
     gl.glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
     gl.glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, 0);
     gl.glEnableVertexAttribArray(0);
-
     // activate buffer #1, which contains the texture coordinates
     gl.glBindBuffer(GL_ARRAY_BUFFER, vbo[1]);
     gl.glVertexAttribPointer(1, 2, GL_FLOAT, false, 0, 0);
     gl.glEnableVertexAttribArray(1);
 // activate texture unit #0 and bind it to the brick texture object
     gl.glActiveTexture(GL_TEXTURE0);
-    gl.glBindTexture(GL_TEXTURE_2D, myTexture);
+    gl.glBindTexture(GL_TEXTURE_2D, brickTexture);
+    gl.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
     gl.glEnable(GL_DEPTH_TEST);
     gl.glDepthFunc(GL_LEQUAL);
-    int numVerts = myObj.getVertices().length;
-    gl.glDrawArrays(GL_TRIANGLES, 0, numVerts);
+    gl.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo[3]);
+    gl.glDrawArrays(GL_TRIANGLES, 0, myModel.getNumVertices());
   }
 
-  private void setupVertices(GL4 gl) {
-    Vertex3D[] vertices = myObj.getVertices();
-    numObjVertices = myObj.getNumVertices();
+  private void setupVertices() {
+    GL4 gl = (GL4) GLContext.getCurrentGL();
+    numObjVertices = myModel.getNumVertices();
+    Vector3f[] vertices = myModel.getVertices();
+    Vector2f[] texCoords = myModel.getTexCoords();
+    Vector3f[] normals = myModel.getNormals();
     float[] pvalues = new float[numObjVertices * 3]; // vertex positions
     float[] tvalues = new float[numObjVertices * 2]; // texture coordinates
     float[] nvalues = new float[numObjVertices * 3]; // normal vectors
     for (int i = 0; i < numObjVertices; i++) {
-      pvalues[i * 3] = (float) (vertices[i]).getX();
-      pvalues[i * 3 + 1] = (float) (vertices[i]).getY();
-      pvalues[i * 3 + 2] = (float) (vertices[i]).getZ();
-      tvalues[i * 2] = (float) (vertices[i]).getS();
-      tvalues[i * 2 + 1] = (float) (vertices[i]).getT();
-      nvalues[i * 3] = (float) (vertices[i]).getNormalX();
-      nvalues[i * 3 + 1] = (float) (vertices[i]).getNormalY();
-      nvalues[i * 3 + 2] = (float) (vertices[i]).getNormalZ();
+      pvalues[i * 3] = (float) (vertices[i]).x();
+      pvalues[i * 3 + 1] = (float) (vertices[i]).y();
+      pvalues[i * 3 + 2] = (float) (vertices[i]).z();
+      tvalues[i * 2] = (float) (texCoords[i]).x();
+      tvalues[i * 2 + 1] = (float) (texCoords[i]).y();
+      nvalues[i * 3] = (float) (normals[i]).x();
+      nvalues[i * 3 + 1] = (float) (normals[i]).y();
+      nvalues[i * 3 + 2] = (float) (normals[i]).z();
     }
     gl.glGenVertexArrays(vao.length, vao, 0);
     gl.glBindVertexArray(vao[0]);
@@ -152,8 +171,7 @@ public class Program6_3 extends JFrame implements GLEventListener {
 // VBO for vertex locations
     gl.glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
     FloatBuffer vertBuf = Buffers.newDirectFloatBuffer(pvalues);
-    gl.glBufferData(GL_ARRAY_BUFFER, vertBuf.limit() * 4, vertBuf,
-            GL_STATIC_DRAW);
+    gl.glBufferData(GL_ARRAY_BUFFER, vertBuf.limit() * 4, vertBuf, GL_STATIC_DRAW);
 // VBO for texture coordinates
     gl.glBindBuffer(GL_ARRAY_BUFFER, vbo[1]);
     FloatBuffer texBuf = Buffers.newDirectFloatBuffer(tvalues);
@@ -162,65 +180,5 @@ public class Program6_3 extends JFrame implements GLEventListener {
     gl.glBindBuffer(GL_ARRAY_BUFFER, vbo[2]);
     FloatBuffer norBuf = Buffers.newDirectFloatBuffer(nvalues);
     gl.glBufferData(GL_ARRAY_BUFFER, norBuf.limit() * 4, norBuf, GL_STATIC_DRAW);
-  }
-
-  private int createShaderProgram() {
-
-    int[] vertCompiled = new int[1];
-    int[] fragCompiled = new int[1];
-    int[] linked = new int[1];
-    GL4 gl = (GL4) GLContext.getCurrentGL();
-    String[] vshaderSource = readShaderSource("Chapter5/P5_1vertex.shader");
-    String[] fshaderSource = readShaderSource("Chapter5/P5_1frag.shader");
-    int vShader = gl.glCreateShader(GL_VERTEX_SHADER);
-    gl.glShaderSource(vShader, vshaderSource.length, vshaderSource, null, 0);
-    gl.glCompileShader(vShader);
-    checkOpenGLError(); // can use returned boolean
-    gl.glGetShaderiv(vShader, GL_COMPILE_STATUS, vertCompiled, 0);
-    if (vertCompiled[0] == 1) {
-      System.out.println("vShader vertex compilation success.");
-    } else {
-      System.out.println("vShader vertex compilation failed.");
-      printShaderLog(vShader);
-    }
-
-    int fShader = gl.glCreateShader(GL_FRAGMENT_SHADER);
-    gl.glShaderSource(fShader, fshaderSource.length, fshaderSource, null, 0);
-    gl.glCompileShader(fShader);
-    checkOpenGLError(); // can use returned boolean
-    gl.glGetShaderiv(fShader, GL_COMPILE_STATUS, fragCompiled, 0);
-    if (fragCompiled[0] == 1) {
-      System.out.println("fShader fragment compilation success.");
-    } else {
-      System.out.println("fShader fragment compilation failed.");
-      printShaderLog(fShader);
-    }
-
-    if ((vertCompiled[0] != 1) || (fragCompiled[0] != 1)) {
-      System.out.println("\nCompilation error; return-flags:");
-      System.out.println(" vertCompiled = " + vertCompiled[0]
-              + "fragCompiled =  " + fragCompiled[0]);
-    } else {
-      System.out.println("Successful compilation");
-    }
-
-    int vfprogram = gl.glCreateProgram();
-    gl.glAttachShader(vfprogram, vShader);
-    gl.glAttachShader(vfprogram, fShader);
-    gl.glLinkProgram(vfprogram);
-    gl.glLinkProgram(vfprogram);
-
-    checkOpenGLError();
-    gl.glGetProgramiv(vfprogram, GL_LINK_STATUS, linked, 0);
-    if (linked[0] == 1) {
-      System.out.println("vfprogram linking succeeded.");
-    } else {
-      System.out.println("vfprogram linking failed.");
-      printProgramLog(vfprogram);
-    }
-
-    gl.glDeleteShader(vShader);
-    gl.glDeleteShader(fShader);
-    return vfprogram;
   }
 }

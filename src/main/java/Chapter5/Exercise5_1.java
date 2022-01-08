@@ -3,88 +3,106 @@
  */
 package Chapter5;
 
+import Template.ZoomPanPanel;
 import java.nio.*;
-import .*;
-import java.io.InputStream;
-import java.util.Scanner;
-import java.util.Vector;
 import javax.swing.*;
-
-import static com.jogamp.opengl.GL4.*;
+import com.jogamp.opengl.*;
+import com.jogamp.common.nio.Buffers;
+import static com.jogamp.opengl.GL.GL_ARRAY_BUFFER;
+import static com.jogamp.opengl.GL.GL_DEPTH_BUFFER_BIT;
+import static com.jogamp.opengl.GL.GL_DEPTH_TEST;
+import static com.jogamp.opengl.GL.GL_FLOAT;
+import static com.jogamp.opengl.GL.GL_LEQUAL;
+import static com.jogamp.opengl.GL.GL_STATIC_DRAW;
+import static com.jogamp.opengl.GL.GL_TEXTURE0;
+import static com.jogamp.opengl.GL.GL_TEXTURE_2D;
+import static com.jogamp.opengl.GL.GL_TRIANGLES;
 import static com.jogamp.opengl.GL2ES2.GL_COMPILE_STATUS;
 import static com.jogamp.opengl.GL2ES2.GL_FRAGMENT_SHADER;
 import static com.jogamp.opengl.GL2ES2.GL_LINK_STATUS;
 import static com.jogamp.opengl.GL2ES2.GL_VERTEX_SHADER;
-import static ..checkOpenGLError;
-import static ..printProgramLog;
-import static ..printShaderLog;
-
-import com.jogamp.opengl.*;
-import com.jogamp.opengl.awt.GLJPanel;
-import com.jogamp.common.nio.Buffers;
+import static com.jogamp.opengl.GL2ES3.GL_COLOR;
 import com.jogamp.opengl.GLContext;
 import com.jogamp.opengl.util.FPSAnimator;
-import com.jogamp.opengl.util.texture.*;
+import com.jogamp.opengl.util.texture.Texture;
+import com.jogamp.opengl.util.texture.TextureIO;
+import java.io.File;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import org.joml.Matrix4f;
+import org.joml.Matrix4fStack;
+import static utils.joglutils.checkOpenGLError;
+import static utils.joglutils.printProgramLog;
+import static utils.joglutils.printShaderLog;
+import static utils.joglutils.readShaderSource;
 
 /**
  *
  * @author kshan
  */
-public class Exercise5_1 extends JFrame implements GLEventListener {
+public class Exercise5_1 extends ZoomPanPanel implements GLEventListener {
 
-  private GLJPanel myCanvas;
+  private final FloatBuffer vals = Buffers.newDirectFloatBuffer(16);
   private int rendering_program;
-  private int vao[] = new int[1];
-  private int vbo[] = new int[2];
+  private final int vao[] = new int[1];
+  private final int vbo[] = new int[2];
   private float cameraX, cameraY, cameraZ;
   private float cubeLocX, cubeLocY, cubeLocZ;
-  private float pyrLocX, pyrLocY, pyrLocZ;
-  private  util = new ();
-  private Matrix4f pMat;
   private int brickTexture;
 
+  private final Matrix4f mMat = new Matrix4f(); // model matrix
+  private final Matrix4f mvMat = new Matrix4f(); // model-view matrix
+  private int mvLoc, pLoc;
+  private long startTime;
+
   public Exercise5_1() {
-    setTitle("Chapter5 - exercise1");
-    setSize(600, 600);
-    myCanvas = new GLJPanel();
-    myCanvas.addGLEventListener(this);
-    this.add(myCanvas);
-    setVisible(true);
-    FPSAnimator animtr = new FPSAnimator(myCanvas, 50);
-    animtr.start();
-    this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
   }
 
+  @Override
   public void init(GLAutoDrawable drawable) {
     GL4 gl = (GL4) GLContext.getCurrentGL();
     rendering_program = createShaderProgram();
     setupVertices();
-    cameraX = 0.0f;
-    cameraY = 0.0f;
-    cameraZ = 4.0f;
     cubeLocX = 0.0f;
-    cubeLocY = 0.0f;
+    cubeLocY = 2.0f;
     cubeLocZ = 0.0f;
-    pyrLocX = 0.0f;
-    pyrLocY = 2.0f;
-    pyrLocZ = 0.0f;
-    float aspect = (float) myCanvas.getWidth() / (float) myCanvas.getHeight();
-    pMat = perspective(70.0f, aspect, 0.1f, 1000.0f);
-    Texture joglBrickTexture = loadTexture("Chapter5/brick.jpg", "jpg");
+    vMat.set(camera.getViewMatrix());
+    FPSAnimator animtr = new FPSAnimator(this, 50);
+    animtr.start();
+// shifted down along    the Y    -axis to reveal perspective
+    // Create a perspective matrix, this one has fovy=60, aspect ratio    matches screen window.
+    // Values for near and far clipping planes can vary as discussed in Section 4.9.
+    aspect = (float) getWidth() / (float) getHeight();
+    pMat.setPerspective((float) Math.toRadians(fov), aspect, 0.1f, 1000.0f);
+    Texture joglBrickTexture = loadTexture("Chapter5/brick.jpg");
     brickTexture = joglBrickTexture.getTextureObject();
+    startTime = System.currentTimeMillis();
   }
 // main(), reshape(), and dispose() are are unchanged
 
   public static void main(String[] args) {
-    new Exercise5_1();
+    JFrame jf = new JFrame();
+    jf.setTitle("Chapter5 - program1");
+    jf.setSize(600, 600);
+    jf.add(new Exercise5_1());
+    jf.setVisible(true);
+    jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
   }
 
+  @Override
   public void reshape(GLAutoDrawable drawable, int x, int y, int width, int height) {
+    aspect = (float) width / (float) height;
+    pMat.setPerspective((float) Math.toRadians(fov), aspect, 0.1f, 1000.0f);
+    drawable.getContext().getGL().glViewport(0, 0, width, height);
   }
 
+  @Override
   public void dispose(GLAutoDrawable drawable) {
   }
 
+  @Override
   public void display(GLAutoDrawable drawable) {
     GL4 gl = (GL4) GLContext.getCurrentGL();
     gl.glClear(GL_DEPTH_BUFFER_BIT);
@@ -92,24 +110,21 @@ public class Exercise5_1 extends JFrame implements GLEventListener {
     FloatBuffer bkgBuffer = Buffers.newDirectFloatBuffer(bkg);
     gl.glClearBufferfv(GL_COLOR, 0, bkgBuffer);
     gl.glUseProgram(rendering_program);
-    //gl.glEnable(GL_CULL_FACE);
-// build view matrix
-    Matrix4f vMat = new Matrix4f();
-    vMat.translate(-cameraX, -cameraY, -cameraZ);
-// build model matrix
-    Matrix4f mMat = new Matrix4f();
-    double x = (double) (System.currentTimeMillis()) / 10000.0;
+    long elapsedTime = System.currentTimeMillis() - startTime;
+    float tf = elapsedTime / 1000f;
+    mMat.identity();
     mMat.translate(cubeLocX, cubeLocY, cubeLocZ);
-    mMat.rotate(2000 * x,0,0);
-// concatenate model and view matrix to create MV matrix
-    Matrix4f mvMat = new Matrix4f();
-    mvMat.concatenate(vMat);
-    mvMat.concatenate(mMat);
+    mMat.rotateXYZ(tf, tf, tf);
+
+    mvMat.identity();
+    mvMat.mul(vMat);
+    mvMat.mul(mMat);
 // copy perspective and MV matrices to corresponding uniform variables
-    int mv_loc = gl.glGetUniformLocation(rendering_program, "mv_matrix");
-    int proj_loc = gl.glGetUniformLocation(rendering_program, "proj_matrix");
-    gl.glUniformMatrix4fv(proj_loc, 1, false, pMat.getFloatValues(), 0);
-    gl.glUniformMatrix4fv(mv_loc, 1, false, mvMat.getFloatValues(), 0);
+    mvLoc = gl.glGetUniformLocation(rendering_program, "mv_matrix");
+    pLoc = gl.glGetUniformLocation(rendering_program, "proj_matrix");
+    gl.glUniformMatrix4fv(pLoc, 1, false, pMat.get(vals));
+    gl.glUniformMatrix4fv(mvLoc, 1, false, mvMat.get(vals));
+
 // associate VBO with the corresponding vertex attribute in the vertexshader 
     gl.glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
     gl.glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, 0);
@@ -129,31 +144,31 @@ public class Exercise5_1 extends JFrame implements GLEventListener {
   private void setupVertices() {
     GL4 gl = (GL4) GLContext.getCurrentGL();
     float[] pyramid_positions
-            = {-1, -1, 1, 1, -1, 1, 0, 1, 0, //front
-              1, -1, 1, 1, -1, -1, 0, 1, 0,//right face
-              1, -1, -1, -1, -1, -1, 0, 1, 0, //back face
-              -1, -1, -1, -1, -1, 1, 0, 1, 0, //left face
-              -1, -1, -1, 1, -1, 1, -1, -1, 1, // base-left block
-              1, -1, 1, -1, -1, -1, 1, -1, -1 // base - right block
-          };
+    = {-1, -1, 1, 1, -1, 1, 0, 1, 0, //front
+      1, -1, 1, 1, -1, -1, 0, 1, 0,//right face
+      1, -1, -1, -1, -1, -1, 0, 1, 0, //back face
+      -1, -1, -1, -1, -1, 1, 0, 1, 0, //left face
+      -1, -1, -1, 1, -1, 1, -1, -1, 1, // base-left block
+      1, -1, 1, -1, -1, -1, 1, -1, -1 // base - right block
+  };
     float[] pyr_texture_coordinates
-            = {0.0f, 0.0f, 1.0f, 0.0f, 0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.5f, 1.0f,
-              0.0f, 0.0f, 1.0f, 0.0f, 0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.5f, 1.0f,
-              0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f,  0.0f};
-    
+    = {0.0f, 0.0f, 1.0f, 0.0f, 0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.5f, 1.0f,
+      0.0f, 0.0f, 1.0f, 0.0f, 0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.5f, 1.0f,
+      0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f};
+
     gl.glGenVertexArrays(vao.length, vao, 0);
     gl.glBindVertexArray(vao[0]);
     gl.glGenBuffers(vbo.length, vbo, 0);
-    
+
     gl.glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
     FloatBuffer pyrBuf = Buffers.newDirectFloatBuffer(pyramid_positions);
     gl.glBufferData(GL_ARRAY_BUFFER, pyrBuf.limit() * 4, pyrBuf,
-            GL_STATIC_DRAW);
+    GL_STATIC_DRAW);
     gl.glBindBuffer(GL_ARRAY_BUFFER, vbo[1]);
     FloatBuffer pTexBuf
-            = Buffers.newDirectFloatBuffer(pyr_texture_coordinates);
+    = Buffers.newDirectFloatBuffer(pyr_texture_coordinates);
     gl.glBufferData(GL_ARRAY_BUFFER, pTexBuf.limit() * 4, pTexBuf,
-            GL_STATIC_DRAW);
+    GL_STATIC_DRAW);
   }
 
   private int createShaderProgram() {
@@ -191,7 +206,7 @@ public class Exercise5_1 extends JFrame implements GLEventListener {
     if ((vertCompiled[0] != 1) || (fragCompiled[0] != 1)) {
       System.out.println("\nCompilation error; return-flags:");
       System.out.println(" vertCompiled = " + vertCompiled[0]
-              + "fragCompiled =  " + fragCompiled[0]);
+      + "fragCompiled =  " + fragCompiled[0]);
     } else {
       System.out.println("Successful compilation");
     }
@@ -216,58 +231,26 @@ public class Exercise5_1 extends JFrame implements GLEventListener {
     return vfprogram;
   }
 
-  private String[] readShaderSource(String filename) {
-
-    Vector<String> lines = new Vector<String>();
-    Scanner sc;
-    sc = new Scanner(getFileFromResourceAsStream(filename));
-    while (sc.hasNext()) {
-      lines.addElement(sc.nextLine());
-    }
-    String[] program = new String[lines.size()];
-    for (int i = 0; i < lines.size(); i++) {
-      program[i] = (String) lines.elementAt(i) + "\n";
-    }
-    return program;
-  }
-
-  public Texture loadTexture(String textureFileName, String suffix) {
+  public Texture loadTexture(String textureFileName) {
     Texture tex = null;
     try {
-      tex = TextureIO.newTexture(getFileFromResourceAsStream(textureFileName), false, suffix);
+      tex = TextureIO.newTexture(getFileFromResource(textureFileName), false);
     } catch (Exception e) {
       e.printStackTrace();
     }
     return tex;
   }
 
-  private InputStream getFileFromResourceAsStream(String fileName) {
-
+  private File getFileFromResource(String fileName) {
+    File file = null;
     // The class loader that loaded the class
     ClassLoader classLoader = getClass().getClassLoader();
-    InputStream inputStream = classLoader.getResourceAsStream(fileName);
-
-    // the stream holding the file content
-    if (inputStream == null) {
-      return null;
-    } else {
-      return inputStream;
+    URL resource = classLoader.getResource(fileName);
+    try {
+      file = new File(resource.toURI());
+    } catch (URISyntaxException ex) {
+      Logger.getLogger(getClass().getName()).log(Level.SEVERE, null, ex);
     }
-
-  }
-
-  private Matrix4f perspective(float fovy, float aspect, float n, float f) {
-    float q = 1.0f / ((float) Math.tan(Math.toRadians(0.5f * fovy)));
-    float A = q / aspect;
-    float B = (n + f) / (n - f);
-    float C = (2.0f * n * f) / (n - f);
-    Matrix4f r = new Matrix4f();
-    r.setElementAt(0, 0, A);
-    r.setElementAt(1, 1, q);
-    r.setElementAt(2, 2, B);
-    r.setElementAt(3, 2, -1.0f);
-    r.setElementAt(2, 3, C);
-    r.setElementAt(3, 3, 0.0f);
-    return r;
+    return file;
   }
 }
